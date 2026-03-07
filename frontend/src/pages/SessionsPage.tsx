@@ -1,12 +1,30 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Mic } from 'lucide-react'
 import { useAppContext } from '@/context/AppContext'
 
+interface ApiSession {
+  id: string;
+  name: string;
+  created_at: number;
+  ended_at: number | null;
+}
+
 export function SessionsPage() {
   const navigate = useNavigate()
   const { state } = useAppContext()
+  const [historySessions, setHistorySessions] = useState<ApiSession[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/sessions')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: ApiSession[]) => setHistorySessions(data))
+      .catch(err => console.warn('Failed to load session history:', err))
+      .finally(() => setHistoryLoading(false))
+  }, [])
 
   const hasActivity = state.transcript.length > 0 || state.toolLog.length > 0
 
@@ -49,7 +67,7 @@ export function SessionsPage() {
             <div>
               <p className="text-muted-foreground">No session active</p>
               <p className="text-xs text-muted-foreground/70 mt-1">
-                Session history is not yet persisted. Start a new session to begin.
+                Start a new session to begin.
               </p>
             </div>
             <Button onClick={() => navigate('/sessions/current')} className="gap-2">
@@ -58,6 +76,37 @@ export function SessionsPage() {
             </Button>
           </div>
         )}
+
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Past Sessions</h2>
+          {historyLoading ? (
+            <p className="text-sm text-muted-foreground/70">Loading...</p>
+          ) : historySessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground/70">No past sessions yet.</p>
+          ) : (
+            historySessions.map(session => {
+              const duration = session.ended_at != null
+                ? Math.round((session.ended_at - session.created_at) / 60)
+                : null
+              return (
+                <Card key={session.id} className="border-border/70">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <Mic className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{session.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(session.created_at * 1000).toLocaleString()}
+                        {duration != null && <span> &middot; {duration} min</span>}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
+          )}
+        </div>
       </div>
     </div>
   )
