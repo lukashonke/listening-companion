@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { getPassword, setPassword, apiFetch } from '@/lib/auth'
+import { setPassword, apiFetch } from '@/lib/auth'
 
 interface Props {
   children: ReactNode
