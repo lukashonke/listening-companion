@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     elevenlabs_tts_model: str = "eleven_v3"
     elevenlabs_eu_endpoint: str = "https://api.eu.elevenlabs.io"
     elevenlabs_stt_model: str = "scribe_v1"
+    elevenlabs_stt_endpoint: str = "wss://api.eu.elevenlabs.io"
 
     # OpenAI
     openai_api_key: str = ""

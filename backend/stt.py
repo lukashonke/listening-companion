@@ -16,7 +16,7 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-SCRIBE_WS_URL = "wss://api.elevenlabs.io/v1/speech-to-text/stream"
+SCRIBE_WS_PATH = "/v1/speech-to-text/stream"
 
 
 class ScribeSTT:
@@ -48,7 +48,7 @@ class ScribeSTT:
         params = f"?model_id={settings.elevenlabs_stt_model}&language_code=en"
         if self._speaker_diarization:
             params += "&diarize=true"
-        url = SCRIBE_WS_URL + params
+        url = settings.elevenlabs_stt_endpoint + SCRIBE_WS_PATH + params
         headers = {"xi-api-key": settings.elevenlabs_api_key}
 
         try:
