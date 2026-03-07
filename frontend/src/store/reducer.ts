@@ -1,4 +1,4 @@
-import type { AppState, WSEvent } from './types'
+import type { AppState, SessionConfig, WSEvent } from './types'
 
 export const initialState: AppState = {
   sessionStatus: 'idle',
@@ -10,6 +10,13 @@ export const initialState: AppState = {
   error: null,
   isRecording: false,
   sessionName: 'New Session',
+  config: {
+    voice_id: 'JBFqnCBsd6RMkjVDRZzb',
+    agent_interval_s: 30,
+    image_provider: 'placeholder',
+    tools: [],
+    speaker_diarization: false,
+  },
 }
 
 type Handler = (state: AppState, event: WSEvent) => AppState
@@ -55,6 +62,7 @@ export type UIAction =
   | { type: 'SET_SESSION_NAME'; payload: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET_SESSION' }
+  | { type: 'SET_CONFIG'; payload: Partial<SessionConfig> }
 
 export function uiReducer(state: AppState, action: UIAction): AppState {
   switch (action.type) {
@@ -66,6 +74,8 @@ export function uiReducer(state: AppState, action: UIAction): AppState {
       return { ...state, error: null }
     case 'RESET_SESSION':
       return { ...initialState, sessionName: state.sessionName }
+    case 'SET_CONFIG':
+      return { ...state, config: { ...state.config, ...action.payload } }
     default:
       return state
   }

@@ -1,5 +1,13 @@
 export type SessionStatus = 'idle' | 'listening' | 'processing'
 
+export interface SessionConfig {
+  voice_id: string;
+  agent_interval_s: number;
+  image_provider: string;
+  tools: string[];
+  speaker_diarization: boolean;
+}
+
 export interface TranscriptChunk {
   type: 'transcript_chunk'
   text: string
@@ -46,6 +54,7 @@ export interface AppState {
   error: AppError | null
   isRecording: boolean
   sessionName: string
+  config: SessionConfig
 }
 
 // All WebSocket event types (server → client)

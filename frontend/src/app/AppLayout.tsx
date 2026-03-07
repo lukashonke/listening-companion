@@ -47,17 +47,8 @@ export function AppLayout() {
   }, [dispatchUI, sendJSON])
 
   const handleSessionStart = useCallback(() => {
-    sendJSON({
-      type: 'session_start',
-      config: {
-        tools: [],
-        voice_id: 'JBFqnCBsd6RMkjVDRZzb',
-        agent_interval_s: 30,
-        image_provider: 'fal',
-        speaker_diarization: false,
-      },
-    })
-  }, [sendJSON])
+    sendJSON({ type: 'session_start', config: state.config })
+  }, [sendJSON, state.config])
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
