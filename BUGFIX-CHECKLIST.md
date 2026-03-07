@@ -26,8 +26,8 @@ Complete all items, run tests, commit, and deploy.
 - [x] For WebSocket: pass password as query param `?token=<password>` since WS doesn't support custom headers easily. Check this in the WS handler.
 
 ## Final steps
-- [ ] Run `cd backend && uv lock` if deps changed
-- [ ] Run `cd backend && uv run pytest` — all tests must pass
-- [ ] `git add -A && git commit -m "fix: SPA routing, recording, session detail, logging, password auth"`
-- [ ] `railway up --detach`
-- [ ] Poll `railway deployment list` every 15s until SUCCESS or FAILED. Report final status.
+- [x] Run `cd backend && uv lock` if deps changed
+- [x] Run `cd backend && uv run pytest` — all tests must pass (28/28 passed)
+- [x] `git add -A && git commit -m "fix: SPA routing, recording, session detail, logging, password auth"`
+- [x] `railway up --detach`
+- [x] Poll `railway deployment list` every 15s until SUCCESS or FAILED. Report final status.
