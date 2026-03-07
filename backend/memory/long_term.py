@@ -51,7 +51,7 @@ class LongTermMemory:
 
     async def save(self, content: str, tags: list[str]) -> LongTermEntry:
         entry = LongTermEntry(session_id=self._session_id, content=content, tags=tags)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         embedding = await loop.run_in_executor(None, _embed, content)
         try:
             await self._db.execute(
@@ -73,7 +73,7 @@ class LongTermMemory:
         return entry
 
     async def search(self, query: str, top_k: int = 5) -> list[LongTermEntry]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         query_vec = await loop.run_in_executor(None, _embed, query)
 
         rows = []

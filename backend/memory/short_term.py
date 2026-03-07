@@ -102,6 +102,7 @@ class ShortTermMemory:
     async def _prune_if_needed(self) -> None:
         if len(self._entries) <= settings.short_term_memory_max:
             return
+        # Tagged entries are exempt from pruning — the cap is a soft limit when all entries are tagged.
         untagged = sorted(
             [e for e in self._entries.values() if not e.tags],
             key=lambda e: e.created_at,

@@ -38,6 +38,7 @@ class ScribeSTT:
         self._sender_task: asyncio.Task | None = None
         self._audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
         self._running = False
+        self._reconnect_attempts = 0
 
     async def start(self) -> None:
         self._running = True
@@ -63,6 +64,7 @@ class ScribeSTT:
             }))
             self._receiver_task = asyncio.create_task(self._receive_loop())
             self._sender_task = asyncio.create_task(self._send_loop())
+            self._reconnect_attempts = 0
             logger.info("Scribe STT connected")
         except Exception as exc:
             logger.error("Scribe STT connection failed: %s", exc)
@@ -131,6 +133,7 @@ class ScribeSTT:
             self._receiver_task.cancel()
             tasks.append(self._receiver_task)
         if self._sender_task:
+            self._sender_task.cancel()
             tasks.append(self._sender_task)
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -142,7 +145,11 @@ class ScribeSTT:
         logger.info("Scribe STT stopped")
 
     async def _reconnect(self) -> None:
-        await asyncio.sleep(2)
+        self._reconnect_attempts += 1
+        if self._reconnect_attempts > 10:
+            logger.error("Scribe STT: max reconnect attempts reached, giving up")
+            return
+        await asyncio.sleep(min(2 ** self._reconnect_attempts, 30))
         if self._running:
-            logger.info("Reconnecting to Scribe STT...")
+            logger.info("Reconnecting to Scribe STT (attempt %d)...", self._reconnect_attempts)
             await self._connect()

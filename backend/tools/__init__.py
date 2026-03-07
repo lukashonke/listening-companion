@@ -9,6 +9,7 @@ from typing import Callable
 log = logging.getLogger(__name__)
 
 _PLUGIN_REGISTRY: dict[str, Callable] = {}
+_discovered = False
 
 
 def tool(fn: Callable | None = None, *, tags: list[str] | None = None):
@@ -21,7 +22,11 @@ def tool(fn: Callable | None = None, *, tags: list[str] | None = None):
 
 
 def discover_plugins() -> None:
-    """Import all plugin modules in tools/ to populate registry."""
+    """Import all plugin modules in tools/ to populate registry (runs once)."""
+    global _discovered
+    if _discovered:
+        return
+    _discovered = True
     tools_dir = pathlib.Path(__file__).parent
     _skip = {"__init__", "memory_ops", "tts_tool", "image_tool"}
     for _, module_name, _ in pkgutil.iter_modules([str(tools_dir)]):

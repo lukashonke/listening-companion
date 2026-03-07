@@ -126,10 +126,11 @@ class ActiveSession:
             await self._stt.send_audio(data)
 
     async def handle_config_update(self, config_patch: dict) -> None:
-        """Apply partial config overrides received from the browser."""
-        for key, value in config_patch.items():
-            if hasattr(self.config, key):
-                setattr(self.config, key, value)
+        """Apply partial config overrides, validated through Pydantic."""
+        try:
+            self.config = self.config.model_copy(update=config_patch)
+        except Exception as exc:
+            logger.warning("Invalid config_update ignored: %s", exc)
 
     # ── Internal callbacks ─────────────────────────────────────────────────────
 
