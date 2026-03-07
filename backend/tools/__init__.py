@@ -10,16 +10,6 @@ log = logging.getLogger(__name__)
 
 _PLUGIN_REGISTRY: dict[str, Callable] = {}
 
-CORE_TOOL_NAMES = [
-    "save_short_term_memory",
-    "remove_short_term_memory",
-    "update_short_term_memory",
-    "save_long_term_memory",
-    "search_long_term_memory",
-    "answer_tts",
-    "generate_image",
-]
-
 
 def tool(fn: Callable | None = None, *, tags: list[str] | None = None):
     """Register a plugin tool in the global registry."""
@@ -46,6 +36,6 @@ def get_plugin_tools(names: list[str]) -> list[Callable]:
     for name in names:
         if name in _PLUGIN_REGISTRY:
             result.append(_PLUGIN_REGISTRY[name])
-        elif name not in CORE_TOOL_NAMES:
+        else:
             log.warning("Unknown plugin tool requested: %s", name)
     return result

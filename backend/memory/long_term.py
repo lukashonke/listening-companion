@@ -1,3 +1,12 @@
+"""Long-term memory backed by SQLite with sentence-transformer embeddings.
+
+Architecture note: The design document specifies sqlite-vec for vector search
+(``vec_distance_cosine``). We use in-Python numpy cosine similarity instead —
+no native extension is required and the implementation is simpler. This is fine
+for small datasets (< a few thousand entries). To scale, replace the
+``search`` method's scoring loop with a sqlite-vec virtual-table query using
+``vec_distance_cosine``.
+"""
 from __future__ import annotations
 import asyncio
 import json

@@ -97,7 +97,6 @@ class ActiveSession:
         # Start agent loop
         await self._agent.start_loop(
             get_transcript=lambda: self.transcript,
-            interval_s=self.config.agent_interval_s,
         )
 
         await self._emit(WsSessionStatus(state="listening"))

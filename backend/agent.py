@@ -114,11 +114,11 @@ class SessionAgent:
             return sync_wrapper
 
     async def start_loop(
-        self, get_transcript: Callable[[], list[TranscriptChunk]], interval_s: int
+        self, get_transcript: Callable[[], list[TranscriptChunk]]
     ) -> None:
         self._running = True
         self._loop_task = asyncio.create_task(
-            self._agent_loop(get_transcript, interval_s)
+            self._agent_loop(get_transcript)
         )
 
     async def stop_loop(self) -> None:
@@ -131,10 +131,10 @@ class SessionAgent:
                 pass
 
     async def _agent_loop(
-        self, get_transcript: Callable[[], list[TranscriptChunk]], interval_s: int
+        self, get_transcript: Callable[[], list[TranscriptChunk]]
     ) -> None:
         while self._running:
-            await asyncio.sleep(interval_s)
+            await asyncio.sleep(self._config.agent_interval_s)
             if not self._running:
                 break
             try:
