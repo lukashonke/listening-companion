@@ -1,9 +1,11 @@
-.git
+**/.venv
 **/node_modules
 **/__pycache__
-**/*.pyc
-**/.venv
+**/.pytest_cache
+**/.git
+**/.env
+*.md
+!README.md
 frontend/dist
-backend/.env
-backend/*.db
-.dockerignore
+.claude
+droid
