@@ -1,47 +1,50 @@
-"""Long-term memory backed by SQLite with sentence-transformer embeddings.
+"""Long-term memory backed by SQLite with OpenAI embeddings.
 
 Architecture note: The design document specifies sqlite-vec for vector search
-(``vec_distance_cosine``). We use in-Python numpy cosine similarity instead —
+(``vec_distance_cosine``). We use in-Python dot-product similarity instead —
 no native extension is required and the implementation is simpler. This is fine
-for small datasets (< a few thousand entries). To scale, replace the
-``search`` method's scoring loop with a sqlite-vec virtual-table query using
-``vec_distance_cosine``.
+for small datasets (< a few thousand entries). OpenAI returns L2-normalized
+vectors so dot product == cosine similarity.
 """
 from __future__ import annotations
-import asyncio
 import json
 import logging
 import struct
 
 import aiosqlite
-import numpy as np
+import openai
 
+from config import settings
 from models import LongTermEntry, now
 
 logger = logging.getLogger(__name__)
 
-_embedder = None
+_openai_client: openai.AsyncOpenAI | None = None
 
 
-def _get_embedder():
-    global _embedder
-    if _embedder is None:
-        from sentence_transformers import SentenceTransformer
-        _embedder = SentenceTransformer("all-MiniLM-L6-v2")
-    return _embedder
+def _get_client() -> openai.AsyncOpenAI:
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+    return _openai_client
 
 
-def _embed(text: str) -> np.ndarray:
-    return _get_embedder().encode(text, normalize_embeddings=True)
+async def _embed(text: str) -> list[float]:
+    response = await _get_client().embeddings.create(
+        model="text-embedding-3-small",
+        input=text,
+        dimensions=384,
+    )
+    return response.data[0].embedding
 
 
-def _vec_to_blob(v: np.ndarray) -> bytes:
-    return struct.pack(f"{len(v)}f", *v.tolist())
+def _vec_to_blob(v: list[float]) -> bytes:
+    return struct.pack(f"{len(v)}f", *v)
 
 
-def _blob_to_vec(b: bytes) -> np.ndarray:
+def _blob_to_vec(b: bytes) -> list[float]:
     n = len(b) // 4
-    return np.array(struct.unpack(f"{n}f", b), dtype=np.float32)
+    return list(struct.unpack(f"{n}f", b))
 
 
 class LongTermMemory:
@@ -51,8 +54,7 @@ class LongTermMemory:
 
     async def save(self, content: str, tags: list[str]) -> LongTermEntry:
         entry = LongTermEntry(session_id=self._session_id, content=content, tags=tags)
-        loop = asyncio.get_running_loop()
-        embedding = await loop.run_in_executor(None, _embed, content)
+        embedding = await _embed(content)
         try:
             await self._db.execute(
                 """INSERT INTO long_term_memory
@@ -73,8 +75,7 @@ class LongTermMemory:
         return entry
 
     async def search(self, query: str, top_k: int = 5) -> list[LongTermEntry]:
-        loop = asyncio.get_running_loop()
-        query_vec = await loop.run_in_executor(None, _embed, query)
+        query_vec = await _embed(query)
 
         rows = []
         async with self._db.execute(
@@ -90,7 +91,7 @@ class LongTermMemory:
         scores = []
         for row in rows:
             vec = _blob_to_vec(row["embedding"])
-            score = float(np.dot(query_vec, vec))
+            score = sum(a * b for a, b in zip(query_vec, vec))
             scores.append((score, row))
 
         scores.sort(key=lambda x: x[0], reverse=True)

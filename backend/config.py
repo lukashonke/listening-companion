@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     elevenlabs_eu_endpoint: str = "https://api.eu.elevenlabs.io"
     elevenlabs_stt_model: str = "scribe_v1"
 
+    # OpenAI
+    openai_api_key: str = ""
+
     # Anthropic / Claude
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-4-5"
