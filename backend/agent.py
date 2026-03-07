@@ -71,14 +71,19 @@ class SessionAgent:
 
         wrapped = [self._wrap_tool(t) for t in self._tools]
 
-        # system_prompt is a callable so it is evaluated dynamically on each run,
-        # reflecting the current short-term memory state.
+        agent = Agent(model=model, tools=wrapped)
+
+        # Use the @agent.system_prompt decorator so it is evaluated dynamically
+        # on each run, reflecting the current short-term memory state.
+        get_context = self._get_short_term_context
+
+        @agent.system_prompt
         def dynamic_system_prompt() -> str:
             return SYSTEM_PROMPT_TEMPLATE.format(
-                short_term_memory=self._get_short_term_context()
+                short_term_memory=get_context()
             )
 
-        return Agent(model=model, tools=wrapped, system_prompt=dynamic_system_prompt)
+        return agent
 
     def _wrap_tool(self, fn: Callable) -> Callable:
         """Wrap a tool to emit tool_call WS events on each invocation."""
