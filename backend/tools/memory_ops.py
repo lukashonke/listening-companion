@@ -14,8 +14,9 @@ def build_memory_tools(
 ) -> list[Callable]:
     """Return 5 memory tools bound to this session's memory objects."""
 
-    async def save_short_term_memory(content: str, tags: list[str] = []) -> str:
+    async def save_short_term_memory(content: str, tags: list[str] | None = None) -> str:
         """Save important information to short-term memory. Returns the entry ID."""
+        tags = tags or []
         entry = await short_term.save(content, tags)
         await emit_memory_update()
         return entry.id
@@ -36,8 +37,9 @@ def build_memory_tools(
             return f"Removed {id}"
         return f"Entry {id} not found"
 
-    async def save_long_term_memory(content: str, tags: list[str] = []) -> str:
+    async def save_long_term_memory(content: str, tags: list[str] | None = None) -> str:
         """Archive important information to long-term memory for future retrieval."""
+        tags = tags or []
         entry = await long_term.save(content, tags)
         return f"Saved to long-term memory: {entry.id}"
 

@@ -52,6 +52,17 @@ class ScribeSTT:
         headers = {"xi-api-key": settings.elevenlabs_api_key}
 
         try:
+            # Cancel old tasks before creating new ones (prevents zombie tasks on reconnect)
+            for task in (self._receiver_task, self._sender_task):
+                if task and not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+            self._receiver_task = None
+            self._sender_task = None
+
             self._ws = await websockets.connect(url, additional_headers=headers)
             # Send session init with audio format
             await self._ws.send(json.dumps({

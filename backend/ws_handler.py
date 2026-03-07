@@ -217,6 +217,7 @@ async def websocket_handler(ws: WebSocket) -> None:
                     await session.setup()
                 except Exception as exc:
                     logger.error("Session setup failed: %s", exc)
+                    session = None
                     err = WsError(
                         code="session_init_failed",
                         message=str(exc),
