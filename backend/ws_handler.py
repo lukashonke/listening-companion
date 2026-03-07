@@ -176,6 +176,9 @@ class ActiveSession:
 async def websocket_handler(ws: WebSocket) -> None:
     """Main WebSocket endpoint — drives the full session lifecycle."""
     await ws.accept()
+    client = getattr(ws, "client", None)
+    client_info = f"{client.host}:{client.port}" if client else "unknown"
+    logger.info("WebSocket client connected: %s", client_info)
     session: ActiveSession | None = None
 
     try:
@@ -191,6 +194,7 @@ async def websocket_handler(ws: WebSocket) -> None:
             # Binary frame → raw PCM audio
             if msg.get("bytes"):
                 if session:
+                    logger.debug("Audio chunk received: %d bytes", len(msg["bytes"]))
                     await session.handle_audio(msg["bytes"])
                 continue
 
@@ -213,6 +217,7 @@ async def websocket_handler(ws: WebSocket) -> None:
                     await session.teardown()
                 config = SessionConfig(**data.get("config", {}))
                 session = ActiveSession(ws, config)
+                logger.info("session_start received (new session will be: %s)", session.id)
                 try:
                     await session.setup()
                 except Exception as exc:
@@ -227,11 +232,13 @@ async def websocket_handler(ws: WebSocket) -> None:
 
             elif msg_type == "session_end":
                 if session:
+                    logger.info("session_end received (session: %s)", session.id)
                     await session.teardown()
                     session = None
 
             elif msg_type == "config_update":
                 if session:
+                    logger.info("config_update applied to session %s", session.id)
                     await session.handle_config_update(data.get("config", {}))
 
     except WebSocketDisconnect:

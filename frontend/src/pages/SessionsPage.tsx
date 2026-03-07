@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Mic } from 'lucide-react'
 import { useAppContext } from '@/context/AppContext'
+import { apiFetch } from '@/lib/auth'
 
 interface ApiSession {
   id: string;
@@ -19,7 +20,7 @@ export function SessionsPage() {
   const [historyLoading, setHistoryLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/sessions')
+    apiFetch('/api/sessions')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: ApiSession[]) => setHistorySessions(data))
       .catch(err => console.warn('Failed to load session history:', err))
@@ -89,7 +90,11 @@ export function SessionsPage() {
                 ? Math.round((session.ended_at - session.created_at) / 60)
                 : null
               return (
-                <Card key={session.id} className="border-border/70">
+                <Card
+                  key={session.id}
+                  className="border-border/70 cursor-pointer hover:bg-accent/50 transition-colors"
+                  onClick={() => navigate(`/sessions/${session.id}`)}
+                >
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                       <Mic className="h-4 w-4 text-muted-foreground" />

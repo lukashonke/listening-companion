@@ -10,8 +10,10 @@ import type { WSEvent } from '@/store/types'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
+import { getWsUrl } from '@/lib/auth'
 
-const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
+const WS_BASE = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
+const WS_URL = getWsUrl(WS_BASE)
 
 export function AppLayout() {
   const { dispatchWS, dispatchUI, state, registerSendJSON } = useAppContext()

@@ -127,6 +127,7 @@ class ScribeSTT:
             if self._speaker_diarization:
                 speaker = str(msg.get("speaker_id") or msg.get("speaker") or "A")
             if text:
+                logger.info("Transcript: %s", text[:50])
                 await self._on_transcript(text, speaker)
         elif msg_type == "error":
             logger.error("Scribe error message: %s", msg)

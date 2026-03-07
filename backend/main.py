@@ -3,9 +3,9 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import settings
@@ -38,6 +38,23 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Password-gate /api/* and /ws routes when APP_PASSWORD is set."""
+    if settings.app_password:
+        path = request.url.path
+        if path.startswith("/api/") or path == "/ws":
+            auth_header = request.headers.get("Authorization", "")
+            token_param = request.query_params.get("token", "")
+            authorized = (
+                auth_header == f"Bearer {settings.app_password}"
+                or token_param == settings.app_password
+            )
+            if not authorized:
+                return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    return await call_next(request)
+
+
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket) -> None:
     await websocket_handler(ws)
@@ -58,13 +75,53 @@ async def list_sessions():
     return [dict(r) for r in rows]
 
 
+@app.get("/api/sessions/{session_id}")
+async def get_session(session_id: str):
+    db = await get_db()
+    async with db.execute(
+        "SELECT id, name, created_at, ended_at, config FROM sessions WHERE id = ?",
+        (session_id,),
+    ) as cursor:
+        row = await cursor.fetchone()
+    if row is None:
+        return JSONResponse({"error": "Session not found"}, status_code=404)
+    session = dict(row)
+    async with db.execute(
+        "SELECT id, content, tags, created_at, updated_at FROM short_term_memory WHERE session_id = ? ORDER BY created_at ASC",
+        (session_id,),
+    ) as cursor:
+        mem_rows = await cursor.fetchall()
+    import json as _json
+    session["memory"] = [
+        {**dict(r), "tags": _json.loads(r["tags"])} for r in mem_rows
+    ]
+    return session
+
+
 # Serve frontend static files (production mode)
 _dist = Path(settings.frontend_dist)
 if _dist.exists():
-    app.mount("/", StaticFiles(directory=str(_dist), html=True), name="static")
+    # Serve hashed assets from /assets directly
+    _assets = _dist / "assets"
+    if _assets.exists():
+        app.mount("/assets", StaticFiles(directory=str(_assets)), name="assets")
     logger.info("Serving frontend from %s", _dist)
 else:
     logger.info("Frontend dist not found at %s — running in API-only mode", _dist)
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """SPA catch-all: serve index.html for any non-API, non-WS path."""
+    if _dist.exists():
+        # Resolve to prevent path traversal
+        resolved = (_dist / full_path).resolve()
+        if resolved.is_relative_to(_dist.resolve()) and resolved.is_file():
+            return FileResponse(str(resolved))
+        index = _dist / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+    return JSONResponse({"error": "Frontend not available"}, status_code=404)
 
 
 if __name__ == "__main__":

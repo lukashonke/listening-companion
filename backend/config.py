@@ -35,5 +35,8 @@ class Settings(BaseSettings):
     port: int = 8000
     frontend_dist: str = "../frontend/dist"
 
+    # Auth (empty = no auth)
+    app_password: str = ""
+
 
 settings = Settings()
