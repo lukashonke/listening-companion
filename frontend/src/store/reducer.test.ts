@@ -1,0 +1,92 @@
+import { describe, it, expect } from 'vitest'
+import { appReducer, initialState } from './reducer'
+import type { WSEvent } from './types'
+
+describe('appReducer', () => {
+  it('appends transcript chunks', () => {
+    const event: WSEvent = {
+      type: 'transcript_chunk',
+      text: 'Hello world',
+      speaker: 'A',
+      ts: 1000,
+    }
+    const next = appReducer(initialState, event)
+    expect(next.transcript).toHaveLength(1)
+    expect(next.transcript[0].text).toBe('Hello world')
+  })
+
+  it('replaces short-term memory wholesale on memory_update', () => {
+    const event: WSEvent = {
+      type: 'memory_update',
+      short_term: [{ id: 'mem_1', content: 'test', tags: ['a'], created_at: 1, updated_at: 1 }],
+    }
+    const next = appReducer(initialState, event)
+    expect(next.shortTermMemory).toHaveLength(1)
+    expect(next.shortTermMemory[0].id).toBe('mem_1')
+  })
+
+  it('keeps only last 100 tool log entries', () => {
+    let state = initialState
+    for (let i = 0; i < 102; i++) {
+      const event: WSEvent = {
+        type: 'tool_call',
+        tool: 'test_tool',
+        args: {},
+        result: { id: `r${i}` },
+        ts: i,
+      }
+      state = appReducer(state, event)
+    }
+    expect(state.toolLog).toHaveLength(100)
+    expect(state.toolLog[99].ts).toBe(101)
+  })
+
+  it('sets isAgentThinking true on agent_start', () => {
+    const event: WSEvent = { type: 'agent_start', ts: 1 }
+    const next = appReducer(initialState, event)
+    expect(next.isAgentThinking).toBe(true)
+  })
+
+  it('sets isAgentThinking false on agent_done', () => {
+    const withThinking = { ...initialState, isAgentThinking: true }
+    const event: WSEvent = { type: 'agent_done', ts: 2 }
+    const next = appReducer(withThinking, event)
+    expect(next.isAgentThinking).toBe(false)
+  })
+
+  it('updates sessionStatus on session_status', () => {
+    const event: WSEvent = { type: 'session_status', state: 'listening' }
+    const next = appReducer(initialState, event)
+    expect(next.sessionStatus).toBe('listening')
+  })
+
+  it('appends images on image_generated', () => {
+    const event: WSEvent = {
+      type: 'image_generated',
+      url: 'https://example.com/img.png',
+      prompt: 'a cat',
+      ts: 1,
+    }
+    const next = appReducer(initialState, event)
+    expect(next.images).toHaveLength(1)
+    expect(next.images[0].url).toBe('https://example.com/img.png')
+  })
+
+  it('sets error on error event', () => {
+    const event: WSEvent = {
+      type: 'error',
+      code: 'stt_failed',
+      message: 'STT disconnected',
+      fatal: false,
+    }
+    const next = appReducer(initialState, event)
+    expect(next.error).not.toBeNull()
+    expect(next.error?.code).toBe('stt_failed')
+  })
+
+  it('returns same state for unknown event type', () => {
+    const event = { type: 'unknown_event' } as unknown as WSEvent
+    const next = appReducer(initialState, event)
+    expect(next).toBe(initialState)
+  })
+})
