@@ -19,7 +19,7 @@ export interface ToolEvent {
   type: 'tool_call'
   tool: string
   args: Record<string, unknown>
-  result: Record<string, unknown>
+  result: Record<string, unknown> | string | null
   ts: number
   error?: string
 }
@@ -52,7 +52,7 @@ export interface AppState {
 export type WSEvent =
   | { type: 'transcript_chunk'; text: string; speaker: string; ts: number }
   | { type: 'memory_update'; short_term: MemoryEntry[] }
-  | { type: 'tool_call'; tool: string; args: Record<string, unknown>; result: Record<string, unknown>; ts: number; error?: string }
+  | { type: 'tool_call'; tool: string; args: Record<string, unknown>; result: Record<string, unknown> | string | null; ts: number; error?: string }
   | { type: 'image_generated'; url: string; prompt: string; ts: number }
   | { type: 'agent_start'; ts: number }
   | { type: 'agent_done'; ts: number }
