@@ -11,7 +11,7 @@ import { ErrorBanner } from '@/components/ErrorBanner'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 
-const WS_URL = 'ws://localhost:8000/ws'
+const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
 
 export function AppLayout() {
   const { dispatchWS, dispatchUI, state } = useAppContext()
