@@ -47,9 +47,9 @@ export function SessionsPage() {
           <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
             <Mic className="h-12 w-12 text-muted-foreground/30" />
             <div>
-              <p className="text-muted-foreground">No active session</p>
+              <p className="text-muted-foreground">No session active</p>
               <p className="text-xs text-muted-foreground/70 mt-1">
-                Click &quot;Start&quot; in the top bar or start a new session below
+                Session history is not yet persisted. Start a new session to begin.
               </p>
             </div>
             <Button onClick={() => navigate('/sessions/current')} className="gap-2">

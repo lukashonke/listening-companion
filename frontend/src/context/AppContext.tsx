@@ -13,10 +13,15 @@ const AppContext = createContext<AppContextValue | null>(null)
 
 type AnyAction = WSEvent | UIAction
 
+const UI_ACTION_TYPES: ReadonlySet<string> = new Set<UIAction['type']>([
+  'SET_RECORDING',
+  'SET_SESSION_NAME',
+  'CLEAR_ERROR',
+  'RESET_SESSION',
+])
+
 function combinedReducer(state: AppState, action: AnyAction): AppState {
-  // UI actions have types starting with uppercase verbs
-  const uiTypes = new Set(['SET_RECORDING', 'SET_SESSION_NAME', 'CLEAR_ERROR', 'RESET_SESSION'])
-  if (uiTypes.has(action.type)) {
+  if (UI_ACTION_TYPES.has(action.type)) {
     return uiReducer(state, action as UIAction)
   }
   return appReducer(state, action as WSEvent)

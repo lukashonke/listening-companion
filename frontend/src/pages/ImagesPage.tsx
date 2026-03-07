@@ -28,7 +28,7 @@ export function ImagesPage() {
           <div className="p-6 grid gap-4 max-w-5xl mx-auto sm:grid-cols-2 lg:grid-cols-3">
             {state.images.map((img, i) => (
               <div
-                key={i}
+                key={`${img.ts}-${i}`}
                 className="group relative rounded-lg overflow-hidden border border-border/70 bg-card aspect-square"
               >
                 <img

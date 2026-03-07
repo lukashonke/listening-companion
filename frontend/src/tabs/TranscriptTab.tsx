@@ -1,15 +1,20 @@
 import { useEffect, useRef } from 'react'
 import { useAppContext } from '@/context/AppContext'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { formatTime } from '@/lib/formatTime'
 
 export function TranscriptTab() {
   const { state } = useAppContext()
   const bottomRef = useRef<HTMLDivElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = viewportRef.current
+    if (!el) return
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    if (isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [state.transcript.length])
 
   if (state.transcript.length === 0) {
@@ -21,10 +26,10 @@ export function TranscriptTab() {
   }
 
   return (
-    <ScrollArea className="h-full">
+    <div ref={viewportRef} className="h-full overflow-y-auto">
       <div className="px-4 py-3 space-y-2 max-w-3xl mx-auto">
         {state.transcript.map((chunk, i) => (
-          <div key={i} className="flex gap-3 items-start">
+          <div key={`${chunk.ts}-${i}`} className="flex gap-3 items-start">
             <span className="text-xs text-muted-foreground mt-0.5 shrink-0 font-mono w-16">
               {formatTime(chunk.ts)}
             </span>
@@ -38,6 +43,6 @@ export function TranscriptTab() {
         ))}
         <div ref={bottomRef} />
       </div>
-    </ScrollArea>
+    </div>
   )
 }

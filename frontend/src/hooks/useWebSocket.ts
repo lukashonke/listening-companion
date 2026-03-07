@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import type { WSEvent } from '@/store/types'
 
 const BACKOFF_INITIAL_MS = 1000
@@ -12,9 +12,11 @@ interface UseWebSocketOptions {
 interface UseWebSocketReturn {
   sendBinary: (data: ArrayBuffer) => void
   sendJSON: (data: object) => void
+  isConnected: boolean
 }
 
 export function useWebSocket({ url, onEvent }: UseWebSocketOptions): UseWebSocketReturn {
+  const [isConnected, setIsConnected] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const backoffRef = useRef(BACKOFF_INITIAL_MS)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -31,6 +33,7 @@ export function useWebSocket({ url, onEvent }: UseWebSocketOptions): UseWebSocke
 
     ws.onopen = () => {
       backoffRef.current = BACKOFF_INITIAL_MS
+      setIsConnected(true)
     }
 
     ws.onmessage = (event: MessageEvent) => {
@@ -45,6 +48,7 @@ export function useWebSocket({ url, onEvent }: UseWebSocketOptions): UseWebSocke
 
     ws.onclose = () => {
       if (!mountedRef.current) return
+      setIsConnected(false)
       wsRef.current = null
       const delay = backoffRef.current
       backoffRef.current = Math.min(delay * 2, BACKOFF_MAX_MS)
@@ -78,5 +82,5 @@ export function useWebSocket({ url, onEvent }: UseWebSocketOptions): UseWebSocke
     }
   }, [])
 
-  return { sendBinary, sendJSON }
+  return { sendBinary, sendJSON, isConnected }
 }

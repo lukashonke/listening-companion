@@ -32,7 +32,7 @@ export function AppLayout() {
     [dispatchWS, enqueueTTS]
   )
 
-  const { sendBinary, sendJSON } = useWebSocket({ url: WS_URL, onEvent: handleEvent })
+  const { sendBinary, sendJSON, isConnected } = useWebSocket({ url: WS_URL, onEvent: handleEvent })
 
   // Keep a stable callback ref so TopBar doesn't need sendBinary in its deps
   sendBinaryRef.current = sendBinary
@@ -46,11 +46,29 @@ export function AppLayout() {
     sendJSON({ type: 'session_end' })
   }, [dispatchUI, sendJSON])
 
+  const handleSessionStart = useCallback(() => {
+    sendJSON({
+      type: 'session_start',
+      config: {
+        tools: [],
+        voice_id: 'JBFqnCBsd6RMkjVDRZzb',
+        agent_interval_s: 30,
+        image_provider: 'fal',
+        speaker_diarization: false,
+      },
+    })
+  }, [sendJSON])
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0">
-        <TopBar onSendBinary={handleSendBinary} />
+        <TopBar
+          onSendBinary={handleSendBinary}
+          isConnected={isConnected}
+          onSessionEnd={() => sendJSON({ type: 'session_end' })}
+          onSessionStart={handleSessionStart}
+        />
         {state.error?.fatal && (
           <ErrorBanner message={state.error.message} onRestart={handleRestart} />
         )}

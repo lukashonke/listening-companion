@@ -39,8 +39,9 @@ export function useAudioCapture({ onAudioChunk, sampleRate = 16_000 }: UseAudioC
     workletNodeRef.current = null
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
-    contextRef.current?.close()
+    const ctx = contextRef.current
     contextRef.current = null
+    ctx?.close()
   }, [])
 
   return { start, stop }

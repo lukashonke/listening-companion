@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Plus, Settings } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RecordButton } from './RecordButton'
@@ -10,11 +10,15 @@ import { useAudioCapture } from '@/hooks/useAudioCapture'
 
 interface TopBarProps {
   onSendBinary: (data: ArrayBuffer) => void
+  isConnected: boolean
+  onSessionEnd: () => void
+  onSessionStart: () => void
 }
 
-export function TopBar({ onSendBinary }: TopBarProps) {
+export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart }: TopBarProps) {
   const { state, dispatchUI } = useAppContext()
   const [isStarting, setIsStarting] = useState(false)
+  const navigate = useNavigate()
 
   const { start: startAudio, stop: stopAudio } = useAudioCapture({
     onAudioChunk: onSendBinary,
@@ -23,11 +27,13 @@ export function TopBar({ onSendBinary }: TopBarProps) {
   const handleToggleRecord = useCallback(async () => {
     if (state.isRecording) {
       stopAudio()
+      onSessionEnd()
       dispatchUI({ type: 'SET_RECORDING', payload: false })
     } else {
       setIsStarting(true)
       try {
         await startAudio()
+        onSessionStart()
         dispatchUI({ type: 'SET_RECORDING', payload: true })
       } catch {
         // mic permission denied or unavailable — stay in idle state
@@ -35,14 +41,16 @@ export function TopBar({ onSendBinary }: TopBarProps) {
         setIsStarting(false)
       }
     }
-  }, [state.isRecording, startAudio, stopAudio, dispatchUI])
+  }, [state.isRecording, startAudio, stopAudio, dispatchUI, onSessionEnd, onSessionStart])
 
   const handleNewSession = useCallback(() => {
     if (state.isRecording) {
       stopAudio()
+      onSessionEnd()
     }
     dispatchUI({ type: 'RESET_SESSION' })
-  }, [state.isRecording, stopAudio, dispatchUI])
+    navigate('/sessions/current')
+  }, [state.isRecording, stopAudio, dispatchUI, onSessionEnd, navigate])
 
   return (
     <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0">
@@ -77,7 +85,10 @@ export function TopBar({ onSendBinary }: TopBarProps) {
         </Badge>
       )}
 
-      <MicIndicator isRecording={state.isRecording} />
+      <MicIndicator
+        isRecording={state.isRecording}
+        isReconnecting={state.isRecording && !isConnected}
+      />
 
       <NavLink to="/settings">
         <Button variant="ghost" size="icon" aria-label="Open settings">
