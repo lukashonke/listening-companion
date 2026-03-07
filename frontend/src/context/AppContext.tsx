@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useReducer, useCallback, useRef, type ReactNode } from 'react'
 import { appReducer, uiReducer, initialState } from '@/store/reducer'
 import type { AppState, WSEvent } from '@/store/types'
 import type { UIAction } from '@/store/reducer'
@@ -7,6 +7,9 @@ interface AppContextValue {
   state: AppState
   dispatchWS: (event: WSEvent) => void
   dispatchUI: (action: UIAction) => void
+  sendJSON: (data: object) => void
+  /** Called by AppLayout after useWebSocket initialises to register the real sender */
+  registerSendJSON: (fn: (data: object) => void) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -30,12 +33,19 @@ function combinedReducer(state: AppState, action: AnyAction): AppState {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(combinedReducer, initialState)
+  const sendJSONRef = useRef<(data: object) => void>(() => {
+    console.warn('sendJSON called before WebSocket initialised')
+  })
 
   const dispatchWS = useCallback((event: WSEvent) => dispatch(event), [])
   const dispatchUI = useCallback((action: UIAction) => dispatch(action), [])
+  const sendJSON = useCallback((data: object) => sendJSONRef.current(data), [])
+  const registerSendJSON = useCallback((fn: (data: object) => void) => {
+    sendJSONRef.current = fn
+  }, [])
 
   return (
-    <AppContext.Provider value={{ state, dispatchWS, dispatchUI }}>
+    <AppContext.Provider value={{ state, dispatchWS, dispatchUI, sendJSON, registerSendJSON }}>
       {children}
     </AppContext.Provider>
   )

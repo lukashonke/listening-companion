@@ -1,64 +1,91 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Settings } from 'lucide-react'
+import { useAppContext } from '@/context/AppContext'
+
+const AGENT_INTERVALS = [10, 30, 60, 120]
+const IMAGE_PROVIDERS = [
+  { value: 'placeholder', label: 'Placeholder (no API key)' },
+  { value: 'fal', label: 'fal.ai Flux' },
+  { value: 'openai', label: 'OpenAI gpt-image-1' },
+]
 
 export function SettingsPage() {
+  const { state, dispatchUI, sendJSON } = useAppContext()
+  const { config, isRecording } = state
+
+  const updateConfig = (patch: Partial<typeof config>) => {
+    dispatchUI({ type: 'SET_CONFIG', payload: patch })
+    if (isRecording) {
+      sendJSON({ type: 'config_update', config: patch })
+    }
+  }
+
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-2">
-          <Settings className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-lg font-semibold">Settings</h1>
+    <div className="p-6 max-w-lg space-y-6">
+      <h1 className="text-xl font-semibold">Settings</h1>
+
+      <div className="space-y-5">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Voice ID (ElevenLabs)</label>
+          <input
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+            value={config.voice_id}
+            onChange={e => updateConfig({ voice_id: e.target.value })}
+            placeholder="JBFqnCBsd6RMkjVDRZzb"
+          />
+          <p className="text-xs text-muted-foreground">ElevenLabs voice ID for TTS spoken responses</p>
         </div>
 
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle className="text-sm">WebSocket Connection</CardTitle>
-            <CardDescription>Backend connection settings</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Endpoint</span>
-              <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono">
-                ws://localhost:8000/ws
-              </code>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Agent Interval</label>
+          <select
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+            value={config.agent_interval_s}
+            onChange={e => updateConfig({ agent_interval_s: Number(e.target.value) })}
+          >
+            {AGENT_INTERVALS.map(s => (
+              <option key={s} value={s}>{s} seconds</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">How often the AI agent reviews the transcript</p>
+        </div>
 
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle className="text-sm">Audio Capture</CardTitle>
-            <CardDescription>Microphone settings</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Sample Rate</span>
-              <Badge variant="secondary">16 kHz</Badge>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Format</span>
-              <Badge variant="secondary">PCM 16-bit mono</Badge>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Chunk size</span>
-              <Badge variant="secondary">200ms</Badge>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Image Provider</label>
+          <select
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+            value={config.image_provider}
+            onChange={e => updateConfig({ image_provider: e.target.value })}
+          >
+            {IMAGE_PROVIDERS.map(p => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
 
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle className="text-sm">About</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-1">
-            <p>Listening Companion &mdash; AI-powered real-time conversation assistant</p>
-            <p className="text-xs opacity-70">
-              Backend: FastAPI + Pydantic AI + Claude &middot; STT: ElevenLabs Scribe
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-between py-2">
+          <div>
+            <p className="text-sm font-medium">Speaker Diarization</p>
+            <p className="text-xs text-muted-foreground">Label speakers A, B, C in transcript</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateConfig({ speaker_diarization: !config.speaker_diarization })}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+              config.speaker_diarization ? 'bg-primary' : 'bg-muted'
+            }`}
+            aria-pressed={config.speaker_diarization}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              config.speaker_diarization ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+        </div>
       </div>
+
+      {isRecording && (
+        <p className="text-xs text-amber-500">
+          Changes are applied live to the current session.
+        </p>
+      )}
     </div>
   )
 }

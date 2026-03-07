@@ -5,7 +5,7 @@ import { MobileNav } from '@/components/sidebar/MobileNav'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useTTSPlayer } from '@/hooks/useTTSPlayer'
 import { useAppContext } from '@/context/AppContext'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { WSEvent } from '@/store/types'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { Toaster } from '@/components/ui/sonner'
@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
 
 export function AppLayout() {
-  const { dispatchWS, dispatchUI, state } = useAppContext()
+  const { dispatchWS, dispatchUI, state, registerSendJSON } = useAppContext()
   const { enqueue: enqueueTTS } = useTTSPlayer()
   const sendBinaryRef = useRef<(data: ArrayBuffer) => void>(() => {})
 
@@ -33,6 +33,11 @@ export function AppLayout() {
   )
 
   const { sendBinary, sendJSON, isConnected } = useWebSocket({ url: WS_URL, onEvent: handleEvent })
+
+  // Register sendJSON into context so any page (e.g. SettingsPage) can send WS messages
+  useEffect(() => {
+    registerSendJSON(sendJSON)
+  }, [registerSendJSON, sendJSON])
 
   // Keep a stable callback ref so TopBar doesn't need sendBinary in its deps
   sendBinaryRef.current = sendBinary
