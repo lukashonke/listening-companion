@@ -54,7 +54,7 @@ class SessionAgent:
         self._emit_agent_start = emit_agent_start
         self._emit_agent_done = emit_agent_done
         self._emit_tool_call = emit_tool_call
-        self._agent = self._build_agent()
+        self._agent = None  # built lazily in start_loop
         self._loop_task: asyncio.Task | None = None
         self._running = False
         self._last_transcript_count = 0
@@ -62,10 +62,11 @@ class SessionAgent:
     def _build_agent(self):
         from pydantic_ai import Agent
         from pydantic_ai.models.anthropic import AnthropicModel
+        from pydantic_ai.providers.anthropic import AnthropicProvider
 
         model = AnthropicModel(
             settings.claude_model,
-            api_key=settings.anthropic_api_key,
+            provider=AnthropicProvider(api_key=settings.anthropic_api_key),
         )
 
         wrapped = [self._wrap_tool(t) for t in self._tools]
@@ -133,6 +134,15 @@ class SessionAgent:
     async def _agent_loop(
         self, get_transcript: Callable[[], list[TranscriptChunk]]
     ) -> None:
+        # Build the agent lazily inside the loop task so that start_loop() never
+        # raises — this ensures session_status:listening is always emitted even
+        # when the Anthropic API key is absent.
+        try:
+            self._agent = self._build_agent()
+        except Exception as exc:
+            logger.error("Agent build failed — loop will not run: %s", exc)
+            return
+
         while self._running:
             await asyncio.sleep(self._config.agent_interval_s)
             if not self._running:
@@ -146,6 +156,9 @@ class SessionAgent:
 
     async def invoke_once(self, transcript: list[TranscriptChunk]) -> None:
         """Run one agent invocation with current transcript."""
+        if self._agent is None:
+            logger.debug("Agent not yet built — skipping invocation")
+            return
         new_chunks = transcript[self._last_transcript_count:]
         if not new_chunks:
             logger.debug("Agent skipping — no new transcript")
