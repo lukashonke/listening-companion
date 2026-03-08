@@ -72,6 +72,14 @@ class SessionAgent:
                 model_name,
                 provider=OpenAIProvider(api_key=settings.openai_api_key),
             )
+        elif provider == "google":
+            from pydantic_ai.models.google import GoogleModel
+            from pydantic_ai.providers.google import GoogleProvider
+            model_name = self._config.agent_model or "gemini-2.5-flash"
+            model = GoogleModel(
+                model_name,
+                provider=GoogleProvider(api_key=settings.google_api_key),
+            )
         else:
             from pydantic_ai.models.anthropic import AnthropicModel
             from pydantic_ai.providers.anthropic import AnthropicProvider

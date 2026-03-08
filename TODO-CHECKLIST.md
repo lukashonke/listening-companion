@@ -105,13 +105,21 @@
   - Support: gpt-4o, gpt-4.1, gpt-4.1-mini, o3, o4-mini, o4-mini-high, o3-pro
   - Settings page: model provider dropdown, model selector, reasoning effort (o-series only)
 
-- [ ] **R9: Add Gemini model support**
+- [x] **R9: Add Gemini model support**
   - Add Google Gemini models alongside Anthropic and OpenAI in the agent
   - Backend: use pydantic-ai's Google/Gemini model integration
   - Support latest Gemini models: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash
   - Settings page: add "Google Gemini" to model provider dropdown
   - Needs GOOGLE_API_KEY env var (or GEMINI_API_KEY) — add to config.py as optional
   - Add to Railway env vars when key is available
+
+- [x] **R10: Add Gemini image generation support**
+  - Add Google Gemini as an image provider option alongside OpenAI and fal.ai
+  - Use the Gemini image generation API (Imagen via Gemini, or native Gemini image gen)
+  - Models to support: gemini-2.0-flash-preview-image-generation (native multimodal image gen)
+  - Settings page: add "Google Gemini" to image provider dropdown
+  - Uses GOOGLE_API_KEY (same as R9)
+  - API endpoint: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` with `responseModalities: ["TEXT", "IMAGE"]`
 
 ## After All Fixes
 

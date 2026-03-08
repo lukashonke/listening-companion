@@ -6,6 +6,7 @@ const IMAGE_PROVIDERS = [
   { value: 'placeholder', label: 'Placeholder (no API key)' },
   { value: 'fal', label: 'fal.ai Flux' },
   { value: 'openai', label: 'OpenAI gpt-image-1' },
+  { value: 'gemini', label: 'Google Gemini (gemini-2.0-flash-preview-image-generation)' },
 ]
 
 const AUDIO_CHUNK_OPTIONS = [
@@ -48,6 +49,12 @@ const OPENAI_MODELS = [
   { value: 'o3-pro', label: 'o3-pro (reasoning, powerful)' },
 ]
 
+const GEMINI_MODELS = [
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default)' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (fast)' },
+]
+
 const REASONING_EFFORTS = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium (default)' },
@@ -71,8 +78,14 @@ export function SettingsPage() {
     }
   }
 
-  const agentModels = config.model_provider === 'openai' ? OPENAI_MODELS : ANTHROPIC_MODELS
-  const defaultAgentModel = config.model_provider === 'openai' ? 'gpt-4o' : 'claude-sonnet-4-6'
+  const agentModels =
+    config.model_provider === 'openai' ? OPENAI_MODELS :
+    config.model_provider === 'google' ? GEMINI_MODELS :
+    ANTHROPIC_MODELS
+  const defaultAgentModel =
+    config.model_provider === 'openai' ? 'gpt-4o' :
+    config.model_provider === 'google' ? 'gemini-2.5-flash' :
+    'claude-sonnet-4-6'
   const showReasoningEffort = config.model_provider === 'openai' && isReasoningModel(config.agent_model)
 
   return (
@@ -191,10 +204,15 @@ export function SettingsPage() {
           <select
             className="w-full px-3 py-2 rounded-md border bg-background text-sm"
             value={config.model_provider}
-            onChange={e => updateConfig({ model_provider: e.target.value, agent_model: e.target.value === 'openai' ? 'gpt-4o' : 'claude-sonnet-4-6' })}
+            onChange={e => {
+              const provider = e.target.value
+              const model = provider === 'openai' ? 'gpt-4o' : provider === 'google' ? 'gemini-2.5-flash' : 'claude-sonnet-4-6'
+              updateConfig({ model_provider: provider, agent_model: model })
+            }}
           >
             <option value="anthropic">Anthropic (Claude)</option>
             <option value="openai">OpenAI</option>
+            <option value="google">Google Gemini</option>
           </select>
         </div>
 

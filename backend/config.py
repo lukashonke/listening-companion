@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str = ""
 
+    # Google / Gemini
+    google_api_key: str = ""
+
     # Anthropic / Claude
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-4-5"
