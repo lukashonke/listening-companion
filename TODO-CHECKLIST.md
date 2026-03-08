@@ -188,6 +188,34 @@
   - Frontend: replace the free-text voice_id input in SettingsPage with a dropdown that fetches from this endpoint
   - Show voice name + category, use voice_id as value
 
+## Round 6 Fixes
+
+- [ ] **R16: Add Pydantic AI model integration tests**
+  Create `backend/tests/test_agent_models.py` with tests that verify ALL supported model providers work with Pydantic AI.
+  
+  **What to test:**
+  1. Agent construction works for each provider (openai, google, anthropic) — verify `_build_agent()` returns a valid Agent
+  2. Agent construction works with specific model names that users can select:
+     - OpenAI: gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-5, gpt-5-mini, gpt-5.4, gpt-5.4-pro, gpt-5.3-chat-latest, o3, o4-mini
+     - Google: gemini-2.5-flash, gemini-2.5-pro, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview
+     - Anthropic: claude-sonnet-4-6, claude-opus-4-6, claude-haiku-4-5-20251001
+  3. Agent with tools can be built (pass mock tools, verify tools are registered)
+  4. System prompt renders correctly with theme and custom_system_prompt
+  5. Reasoning effort model settings work for OpenAI o-series models
+  
+  **Testing approach:**
+  - Use `pytest` with `@pytest.mark.parametrize` for model matrix
+  - Use `unittest.mock.patch` or `pydantic_ai.models.test.TestModel` to avoid actual API calls
+  - Import from `agent.py` — test `SessionAgent._build_agent()` by creating a SessionAgent with mocked config
+  - Verify the Agent object is created, has the right number of tools, etc.
+  - For reasoning models (o1, o3, o4-mini), verify `OpenAIModelSettings` with `reasoning_effort` is passed
+  
+  **Also add:**
+  - Test that `_is_chat_model()` filter in main.py correctly includes/excludes models (parametrized)
+  - Test that `_is_gemini_chat_model()` filter correctly includes/excludes models (parametrized)
+  
+  Run tests with: `cd backend && python -m pytest tests/ -v`
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03
