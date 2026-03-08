@@ -223,6 +223,42 @@ class ActiveSession:
         if self._agent and self.config.agent_trigger_mode == "transcript":
             await self._agent.trigger_agent_run()
 
+    # ── LLM helper ──────────────────────────────────────────────────────────
+
+    def _get_llm_model(self):
+        """Create the appropriate Pydantic AI model based on session config.
+
+        Returns a model instance compatible with pydantic_ai.Agent, using
+        config.model_provider and config.agent_model to select the provider.
+        """
+        from pydantic_ai.models.openai import OpenAIModel
+        from pydantic_ai.providers.openai import OpenAIProvider
+        from pydantic_ai.models.google import GoogleModel
+        from pydantic_ai.providers.google import GoogleProvider
+        from pydantic_ai.models.anthropic import AnthropicModel
+        from pydantic_ai.providers.anthropic import AnthropicProvider
+
+        provider = self.config.model_provider or "anthropic"
+
+        if provider == "openai":
+            model_name = self.config.agent_model or "gpt-4o"
+            return OpenAIModel(
+                model_name,
+                provider=OpenAIProvider(api_key=settings.openai_api_key),
+            )
+        elif provider == "google":
+            model_name = self.config.agent_model or "gemini-2.5-flash"
+            return GoogleModel(
+                model_name,
+                provider=GoogleProvider(api_key=settings.google_api_key),
+            )
+        else:
+            model_name = self.config.agent_model or settings.claude_model
+            return AnthropicModel(
+                model_name,
+                provider=AnthropicProvider(api_key=settings.anthropic_api_key),
+            )
+
     # ── Auto-naming ──────────────────────────────────────────────────────────
 
     async def _auto_name_task(self) -> None:
@@ -301,32 +337,7 @@ class ActiveSession:
         try:
             from pydantic_ai import Agent
 
-            provider = self.config.model_provider or "anthropic"
-            if provider == "openai":
-                from pydantic_ai.models.openai import OpenAIModel
-                from pydantic_ai.providers.openai import OpenAIProvider
-                model_name = self.config.agent_model or "gpt-4o"
-                model = OpenAIModel(
-                    model_name,
-                    provider=OpenAIProvider(api_key=settings.openai_api_key),
-                )
-            elif provider == "google":
-                from pydantic_ai.models.google import GoogleModel
-                from pydantic_ai.providers.google import GoogleProvider
-                model_name = self.config.agent_model or "gemini-2.5-flash"
-                model = GoogleModel(
-                    model_name,
-                    provider=GoogleProvider(api_key=settings.google_api_key),
-                )
-            else:
-                from pydantic_ai.models.anthropic import AnthropicModel
-                from pydantic_ai.providers.anthropic import AnthropicProvider
-                model_name = self.config.agent_model or settings.claude_model
-                model = AnthropicModel(
-                    model_name,
-                    provider=AnthropicProvider(api_key=settings.anthropic_api_key),
-                )
-
+            model = self._get_llm_model()
             agent = Agent(model=model)
             result = await agent.run(prompt)
             name = result.output.strip().strip('"').strip("'")
@@ -447,32 +458,7 @@ class ActiveSession:
         try:
             from pydantic_ai import Agent
 
-            provider = self.config.model_provider or "anthropic"
-            if provider == "openai":
-                from pydantic_ai.models.openai import OpenAIModel
-                from pydantic_ai.providers.openai import OpenAIProvider
-                model_name = self.config.agent_model or "gpt-4o"
-                model = OpenAIModel(
-                    model_name,
-                    provider=OpenAIProvider(api_key=settings.openai_api_key),
-                )
-            elif provider == "google":
-                from pydantic_ai.models.google import GoogleModel
-                from pydantic_ai.providers.google import GoogleProvider
-                model_name = self.config.agent_model or "gemini-2.5-flash"
-                model = GoogleModel(
-                    model_name,
-                    provider=GoogleProvider(api_key=settings.google_api_key),
-                )
-            else:
-                from pydantic_ai.models.anthropic import AnthropicModel
-                from pydantic_ai.providers.anthropic import AnthropicProvider
-                model_name = self.config.agent_model or settings.claude_model
-                model = AnthropicModel(
-                    model_name,
-                    provider=AnthropicProvider(api_key=settings.anthropic_api_key),
-                )
-
+            model = self._get_llm_model()
             agent = Agent(model=model)
             result = await agent.run(prompt)
             summary = result.output.strip()
