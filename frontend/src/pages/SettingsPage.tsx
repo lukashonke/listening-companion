@@ -456,6 +456,111 @@ export function SettingsPage() {
         )}
       </section>
 
+      {/* Background AI Features */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Background AI Features</h2>
+
+        {/* Auto-Naming */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium">Auto-Naming</p>
+              <p className="text-xs text-muted-foreground">Automatically name sessions based on transcript content</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => updateConfig({ auto_naming_enabled: !config.auto_naming_enabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                config.auto_naming_enabled ? 'bg-primary' : 'bg-muted'
+              }`}
+              aria-pressed={config.auto_naming_enabled}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                config.auto_naming_enabled ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {config.auto_naming_enabled && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">First Trigger (chunks)</label>
+                <input
+                  type="number"
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  value={config.auto_naming_first_trigger}
+                  onChange={e => updateConfig({ auto_naming_first_trigger: Math.max(1, Number(e.target.value)) })}
+                  min={1}
+                />
+                <p className="text-xs text-muted-foreground">Number of transcript chunks before first auto-naming attempt</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Repeat Interval (chunks)</label>
+                <input
+                  type="number"
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  value={config.auto_naming_repeat_interval}
+                  onChange={e => updateConfig({ auto_naming_repeat_interval: Math.max(1, Number(e.target.value)) })}
+                  min={1}
+                />
+                <p className="text-xs text-muted-foreground">Number of additional chunks between name re-evaluations</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Auto-Summarization */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium">Auto-Summarization</p>
+              <p className="text-xs text-muted-foreground">Automatically generate session summaries at regular intervals</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => updateConfig({ auto_summarization_enabled: !config.auto_summarization_enabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                config.auto_summarization_enabled ? 'bg-primary' : 'bg-muted'
+              }`}
+              aria-pressed={config.auto_summarization_enabled}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                config.auto_summarization_enabled ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {config.auto_summarization_enabled && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Summarization Interval (seconds)</label>
+                <input
+                  type="number"
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  value={config.auto_summarization_interval}
+                  onChange={e => updateConfig({ auto_summarization_interval: Math.max(30, Number(e.target.value)) })}
+                  min={30}
+                />
+                <p className="text-xs text-muted-foreground">How often to generate an updated summary</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Max Transcript Length (chars)</label>
+                <input
+                  type="number"
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  value={config.auto_summarization_max_transcript_length}
+                  onChange={e => updateConfig({ auto_summarization_max_transcript_length: Math.max(1000, Number(e.target.value)) })}
+                  min={1000}
+                />
+                <p className="text-xs text-muted-foreground">Maximum transcript characters sent to the LLM for summarization</p>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
       {isRecording && (
         <p className="text-xs text-amber-500">
           Changes are applied live to the current session.

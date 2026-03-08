@@ -20,6 +20,13 @@ export interface SessionConfig {
   // R8
   model_provider: string;
   reasoning_effort: string;
+  // Background AI features
+  auto_naming_enabled: boolean;
+  auto_naming_first_trigger: number;
+  auto_naming_repeat_interval: number;
+  auto_summarization_enabled: boolean;
+  auto_summarization_interval: number;
+  auto_summarization_max_transcript_length: number;
 }
 
 export interface TranscriptChunk {

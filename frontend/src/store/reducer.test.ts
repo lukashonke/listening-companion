@@ -121,6 +121,20 @@ describe('appReducer', () => {
   })
 })
 
+describe('DEFAULT_CONFIG background AI fields', () => {
+  it('has auto-naming defaults', () => {
+    expect(initialState.config.auto_naming_enabled).toBe(true)
+    expect(initialState.config.auto_naming_first_trigger).toBe(5)
+    expect(initialState.config.auto_naming_repeat_interval).toBe(10)
+  })
+
+  it('has auto-summarization defaults', () => {
+    expect(initialState.config.auto_summarization_enabled).toBe(true)
+    expect(initialState.config.auto_summarization_interval).toBe(300)
+    expect(initialState.config.auto_summarization_max_transcript_length).toBe(50000)
+  })
+})
+
 describe('uiReducer', () => {
   it('sets images via SET_IMAGES action', () => {
     const action: UIAction = {

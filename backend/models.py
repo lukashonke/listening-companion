@@ -33,6 +33,13 @@ class SessionConfig(BaseModel):
     reasoning_effort: str = "medium"  # for OpenAI o-series reasoning models
     # R12: TTS language code (BCP-47), default Czech
     tts_language: str = "cs"
+    # Background AI features
+    auto_naming_enabled: bool = True
+    auto_naming_first_trigger: int = 5  # chunk count before first auto-name
+    auto_naming_repeat_interval: int = 10  # chunk count between re-evaluations
+    auto_summarization_enabled: bool = True
+    auto_summarization_interval: int = 300  # seconds between summarization runs
+    auto_summarization_max_transcript_length: int = 50000  # max chars for LLM context
 
 
 class Session(BaseModel):

@@ -17,6 +17,12 @@ const DEFAULT_CONFIG: SessionConfig = {
   theme: '',
   model_provider: 'openai',
   reasoning_effort: 'medium',
+  auto_naming_enabled: true,
+  auto_naming_first_trigger: 5,
+  auto_naming_repeat_interval: 10,
+  auto_summarization_enabled: true,
+  auto_summarization_interval: 300,
+  auto_summarization_max_transcript_length: 50000,
 }
 
 export const initialState: AppState = {

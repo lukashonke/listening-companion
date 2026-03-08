@@ -29,6 +29,37 @@ def test_session_config_defaults():
     assert config.speaker_diarization is False
 
 
+def test_session_config_auto_naming_defaults():
+    config = SessionConfig()
+    assert config.auto_naming_enabled is True
+    assert config.auto_naming_first_trigger == 5
+    assert config.auto_naming_repeat_interval == 10
+
+
+def test_session_config_auto_summarization_defaults():
+    config = SessionConfig()
+    assert config.auto_summarization_enabled is True
+    assert config.auto_summarization_interval == 300
+    assert config.auto_summarization_max_transcript_length == 50000
+
+
+def test_session_config_accepts_custom_background_llm_settings():
+    config = SessionConfig(
+        auto_naming_enabled=False,
+        auto_naming_first_trigger=10,
+        auto_naming_repeat_interval=20,
+        auto_summarization_enabled=False,
+        auto_summarization_interval=600,
+        auto_summarization_max_transcript_length=100000,
+    )
+    assert config.auto_naming_enabled is False
+    assert config.auto_naming_first_trigger == 10
+    assert config.auto_naming_repeat_interval == 20
+    assert config.auto_summarization_enabled is False
+    assert config.auto_summarization_interval == 600
+    assert config.auto_summarization_max_transcript_length == 100000
+
+
 def test_transcript_chunk_defaults():
     chunk = TranscriptChunk(text="hello world")
     assert chunk.speaker == "A"
