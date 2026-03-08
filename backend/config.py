@@ -8,9 +8,9 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str = ""
     elevenlabs_tts_voice_id: str = "JBFqnCBsd6RMkjVDRZzb"
     elevenlabs_tts_model: str = "eleven_v3"
-    elevenlabs_eu_endpoint: str = "https://api.eu.elevenlabs.io"
-    elevenlabs_stt_model: str = "scribe_v1"
-    elevenlabs_stt_endpoint: str = "wss://api.eu.elevenlabs.io"
+    elevenlabs_eu_endpoint: str = "https://api.eu.residency.elevenlabs.io"
+    elevenlabs_stt_model: str = "scribe_v2_realtime"
+    elevenlabs_stt_endpoint: str = "wss://api.eu.residency.elevenlabs.io"
 
     # OpenAI
     openai_api_key: str = ""

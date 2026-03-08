@@ -89,6 +89,17 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
         aria-label="Session name"
       />
 
+      {/* Session theme — per-session context, shown when not recording */}
+      {!state.isRecording && (
+        <input
+          className="hidden md:block text-xs bg-transparent border-none outline-none focus:ring-1 focus:ring-border rounded px-1 truncate max-w-[200px] text-muted-foreground placeholder:text-muted-foreground/60"
+          value={state.config.theme}
+          onChange={(e) => dispatchUI({ type: 'SET_CONFIG', payload: { theme: e.target.value } })}
+          placeholder="Theme (meeting, D&D, lecture…)"
+          aria-label="Session theme"
+        />
+      )}
+
       <div className="flex-1" />
 
       {/* Agent thinking indicator */}

@@ -110,22 +110,6 @@ export function SettingsPage() {
     <div className="p-6 max-w-lg space-y-8">
       <h1 className="text-xl font-semibold">Settings</h1>
 
-      {/* Session */}
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Session</h2>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Session Theme / Context</label>
-          <input
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-            value={config.theme}
-            onChange={e => updateConfig({ theme: e.target.value })}
-            placeholder="e.g. Meeting, D&D Session, Lecture, Interview…"
-          />
-          <p className="text-xs text-muted-foreground">Helps the agent adapt its behavior (track action items in meetings, initiative in D&D, etc.)</p>
-        </div>
-      </section>
-
       {/* Audio */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Audio</h2>
