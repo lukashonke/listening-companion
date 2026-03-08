@@ -1,5 +1,17 @@
 import type { AppState, SessionConfig, WSEvent } from './types'
 
+const DEFAULT_CONFIG: SessionConfig = {
+  voice_id: 'JBFqnCBsd6RMkjVDRZzb',
+  agent_interval_s: 30,
+  image_provider: 'placeholder',
+  tools: [],
+  speaker_diarization: false,
+  audio_chunk_ms: 200,
+  stt_language: 'en',
+  tts_model: 'eleven_v3',
+  agent_model: 'claude-sonnet-4-6',
+}
+
 export const initialState: AppState = {
   sessionStatus: 'idle',
   transcript: [],
@@ -11,14 +23,10 @@ export const initialState: AppState = {
   error: null,
   isRecording: false,
   sessionName: 'New Session',
-  config: {
-    voice_id: 'JBFqnCBsd6RMkjVDRZzb',
-    agent_interval_s: 30,
-    image_provider: 'placeholder',
-    tools: [],
-    speaker_diarization: false,
-  },
+  config: DEFAULT_CONFIG,
 }
+
+export { DEFAULT_CONFIG }
 
 type Handler = (state: AppState, event: WSEvent) => AppState
 
@@ -81,7 +89,7 @@ export function uiReducer(state: AppState, action: UIAction): AppState {
     case 'CLEAR_LOGS':
       return { ...state, logs: [] }
     case 'RESET_SESSION':
-      return { ...initialState, sessionName: state.sessionName }
+      return { ...initialState, config: state.config, sessionName: state.sessionName }
     case 'SET_CONFIG':
       return { ...state, config: { ...state.config, ...action.payload } }
     default:

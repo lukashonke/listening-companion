@@ -3,9 +3,10 @@ import { useRef, useCallback } from 'react'
 interface UseAudioCaptureOptions {
   onAudioChunk: (buffer: ArrayBuffer) => void
   sampleRate?: number
+  chunkIntervalMs?: number
 }
 
-export function useAudioCapture({ onAudioChunk, sampleRate = 16_000 }: UseAudioCaptureOptions) {
+export function useAudioCapture({ onAudioChunk, sampleRate = 16_000, chunkIntervalMs = 200 }: UseAudioCaptureOptions) {
   const contextRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const workletNodeRef = useRef<AudioWorkletNode | null>(null)
@@ -35,6 +36,10 @@ export function useAudioCapture({ onAudioChunk, sampleRate = 16_000 }: UseAudioC
     const workletNode = new AudioWorkletNode(context, 'audio-processor')
     workletNodeRef.current = workletNode
 
+    // Configure chunk interval before audio starts flowing
+    workletNode.port.postMessage({ type: 'config', chunkMs: chunkIntervalMs })
+    console.log('[AudioCapture] Configured chunk interval:', chunkIntervalMs, 'ms')
+
     let chunkCount = 0
     workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
       chunkCount++
@@ -54,7 +59,7 @@ export function useAudioCapture({ onAudioChunk, sampleRate = 16_000 }: UseAudioC
     workletNode.connect(silentGain)
     silentGain.connect(context.destination)
     console.log('[AudioCapture] Audio graph connected: source → worklet → silentGain(0) → destination')
-  }, [sampleRate])
+  }, [sampleRate, chunkIntervalMs])
 
   const stop = useCallback(() => {
     workletNodeRef.current?.disconnect()

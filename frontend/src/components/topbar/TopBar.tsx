@@ -24,6 +24,7 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
 
   const { start: startAudio, stop: stopAudio } = useAudioCapture({
     onAudioChunk: onSendBinary,
+    chunkIntervalMs: state.config.audio_chunk_ms,
   })
 
   const handleToggleRecord = useCallback(async () => {

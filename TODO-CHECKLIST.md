@@ -49,6 +49,23 @@
   - Fix: Make the tab bar horizontally scrollable on small screens (`overflow-x: auto`, hide scrollbar with CSS)
   - File: `frontend/src/pages/ActiveSessionPage.tsx` — the `tablist` element
 
+## Configuration & Persistence
+
+- [x] **C1: Persist settings in localStorage and expose all configurable params**
+  - Currently settings are only in React state — lost on page refresh. Persist to localStorage and load on startup.
+  - **Audio chunk interval**: The AudioWorklet sends chunks every 200ms (hardcoded in `audio-processor.worklet.js` as `sampleRate * 0.2`). Make this configurable from settings (e.g., 200ms, 500ms, 1000ms). This requires regenerating or parameterizing the worklet.
+  - **All settings should be on the Settings page and persisted to localStorage:**
+    - Voice ID (already there)
+    - Agent interval (already there)
+    - Image provider (already there)
+    - Speaker diarization (already there)
+    - Audio chunk interval (NEW — 200ms/500ms/1000ms)
+    - STT language (NEW — currently hardcoded to "en", add common languages)
+    - TTS model (NEW — eleven_v3 etc.)
+    - Agent model (NEW — claude model override)
+  - Load persisted config from localStorage on app start. Merge with defaults for any missing keys.
+  - When config changes, save to localStorage immediately.
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03

@@ -1,11 +1,16 @@
 // AudioWorklet processor — runs in audio rendering thread
-// Collects Float32 samples, converts to 16-bit PCM, sends 200ms chunks to main thread
+// Collects Float32 samples, converts to 16-bit PCM, sends configurable chunks to main thread
 class AudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super()
-    // 200ms chunk: sampleRate * 0.2 (sampleRate is a global in AudioWorklet scope)
+    // default 200ms; reconfigurable via port message { type: 'config', chunkMs: N }
     this._chunkSamples = Math.round(sampleRate * 0.2)
     this._buffer = []
+    this.port.onmessage = (e) => {
+      if (e.data && e.data.type === 'config' && e.data.chunkMs) {
+        this._chunkSamples = Math.round(sampleRate * (e.data.chunkMs / 1000))
+      }
+    }
   }
 
   process(inputs) {

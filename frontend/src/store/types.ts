@@ -6,6 +6,10 @@ export interface SessionConfig {
   image_provider: string;
   tools: string[];
   speaker_diarization: boolean;
+  audio_chunk_ms: number;
+  stt_language: string;
+  tts_model: string;
+  agent_model: string;
 }
 
 export interface TranscriptChunk {
