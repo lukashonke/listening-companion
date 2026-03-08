@@ -53,13 +53,58 @@ npm run dev
 
 ## Deployment (Railway)
 
+**Live:** https://listening-companion-production-d15c.up.railway.app
+
+### Prerequisites
+
+1. Install Railway CLI: `npm i -g @railway/cli`
+2. Authenticate: `railway login`
+3. Link to the project (run from this directory): `railway link`
+   - Select the project and service when prompted
+
+### Deploy
+
 ```bash
 railway up --detach
 ```
 
-Required Railway env vars: `ELEVENLABS_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `APP_PASSWORD`
+This builds the Dockerfile and pushes to Railway. The `--detach` flag returns immediately without tailing logs.
 
-Live: https://listening-companion-production-d15c.up.railway.app
+### Required Environment Variables
+
+Set via `railway variables set KEY=VALUE` or the Railway dashboard:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ELEVENLABS_API_KEY` | ✅ | ElevenLabs API key (EU residency) |
+| `OPENAI_API_KEY` | ✅ | OpenAI API key (embeddings + image gen) |
+| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key (AI agent) |
+| `GOOGLE_API_KEY` | Optional | Google API key (Gemini models + Imagen) |
+| `APP_PASSWORD` | Optional | Password gate (disabled if unset) |
+
+### Status & Logs
+
+```bash
+# List recent deployments (status, ID, time)
+railway deployment list
+
+# Tail live logs
+railway logs
+
+# Last N lines
+railway logs --tail <N>
+
+# Logs for a specific deployment
+railway logs --deployment <deployment-id>
+
+# View/list environment variables
+railway variables
+
+# Redeploy without code changes (e.g. after env var update)
+railway redeploy --yes
+```
+
+> **Note:** All `railway` commands must be run from the linked project directory, or use `railway link` first.
 
 ## Architecture
 
