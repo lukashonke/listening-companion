@@ -17,10 +17,10 @@ def now() -> float:
 
 class SessionConfig(BaseModel):
     tools: list[str] = []
-    voice_id: str = "JBFqnCBsd6RMkjVDRZzb"
+    voice_id: str = "P1bg08DkjqiVEzOn76yG"
     agent_interval_s: int = 30
-    image_provider: str = "placeholder"
-    image_model: str = ""  # empty = use provider default
+    image_provider: str = "gemini"
+    image_model: str = "imagen-4.0-fast-generate-001"
     image_prompt_theme: str = ""  # style/theme instructions prepended to image prompts
     speaker_diarization: bool = False
     # R5: custom system prompt appended to the built-in prompt
@@ -28,8 +28,8 @@ class SessionConfig(BaseModel):
     # R6: session theme passed to agent for context-aware behavior
     theme: str = ""
     # R8: model provider and model selection
-    model_provider: str = "anthropic"  # "anthropic" or "openai"
-    agent_model: str = ""  # empty = use server default
+    model_provider: str = "openai"
+    agent_model: str = "gpt-5.3-chat-latest"
     reasoning_effort: str = "medium"  # for OpenAI o-series reasoning models
     # R12: TTS language code (BCP-47), default Czech
     tts_language: str = "cs"

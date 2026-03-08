@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
-import { Plus, Settings } from 'lucide-react'
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Plus } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -95,11 +95,6 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
         isReconnecting={state.isRecording && !isConnected}
       />
 
-      <NavLink to="/settings">
-        <Button variant="ghost" size="icon" aria-label="Open settings">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </NavLink>
     </header>
   )
 }

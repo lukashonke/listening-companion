@@ -1,21 +1,21 @@
-import type { AppState, SessionConfig, WSEvent } from './types'
+import type { AppState, GeneratedImage, SessionConfig, WSEvent } from './types'
 
 const DEFAULT_CONFIG: SessionConfig = {
-  voice_id: 'JBFqnCBsd6RMkjVDRZzb',
+  voice_id: 'P1bg08DkjqiVEzOn76yG',
   agent_interval_s: 30,
-  image_provider: 'placeholder',
-  image_model: '',
+  image_provider: 'gemini',
+  image_model: 'imagen-4.0-fast-generate-001',
   image_prompt_theme: '',
   tools: [],
   speaker_diarization: false,
-  audio_chunk_ms: 200,
-  stt_language: 'en',
+  audio_chunk_ms: 1000,
+  stt_language: 'cs',
   tts_model: 'eleven_v3',
   tts_language: 'cs',
-  agent_model: 'claude-sonnet-4-6',
+  agent_model: 'gpt-5.3-chat-latest',
   custom_system_prompt: '',
   theme: '',
-  model_provider: 'anthropic',
+  model_provider: 'openai',
   reasoning_effort: 'medium',
 }
 
@@ -91,6 +91,7 @@ export type UIAction =
   | { type: 'RESET_SESSION' }
   | { type: 'SET_CONFIG'; payload: Partial<SessionConfig> }
   | { type: 'SET_RESUME_SESSION_ID'; payload: string | null }
+  | { type: 'SET_IMAGES'; payload: GeneratedImage[] }
 
 export function uiReducer(state: AppState, action: UIAction): AppState {
   switch (action.type) {
@@ -108,6 +109,8 @@ export function uiReducer(state: AppState, action: UIAction): AppState {
       return { ...state, config: { ...state.config, ...action.payload } }
     case 'SET_RESUME_SESSION_ID':
       return { ...state, resumeSessionId: action.payload }
+    case 'SET_IMAGES':
+      return { ...state, images: action.payload }
     default:
       return state
   }
