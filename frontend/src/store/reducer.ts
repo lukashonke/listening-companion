@@ -81,6 +81,10 @@ const handlers: Partial<Record<WSEvent['type'], Handler>> = {
     const ev = e as Extract<WSEvent, { type: 'log' }>
     return { ...s, logs: [...s.logs.slice(-999), { level: ev.level, message: ev.message, ts: ev.ts }] }
   },
+  session_name_update: (s, e) => {
+    const ev = e as Extract<WSEvent, { type: 'session_name_update' }>
+    return { ...s, sessionName: ev.name }
+  },
 }
 
 export function appReducer(state: AppState, event: WSEvent): AppState {

@@ -45,6 +45,7 @@ class SessionConfig(BaseModel):
 class Session(BaseModel):
     id: str = Field(default_factory=lambda: new_id("sess_"))
     name: str = ""
+    name_source: str = "default"  # 'default' | 'auto' | 'user'
     created_at: float = Field(default_factory=now)
     ended_at: float | None = None
     config: SessionConfig = Field(default_factory=SessionConfig)
@@ -139,6 +140,12 @@ class WsLog(BaseModel):
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     message: str
     ts: float = Field(default_factory=now)
+
+
+class WsSessionNameUpdate(BaseModel):
+    type: Literal["session_name_update"] = "session_name_update"
+    name: str
+    name_source: str  # 'auto' or 'user'
 
 
 # ── Client → Server frames ────────────────────────────────────────────────────

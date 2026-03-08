@@ -23,6 +23,7 @@ from models import (
     WsError,
     WsSessionStatus,
     WsLog,
+    WsSessionNameUpdate,
 )
 from memory.short_term import ShortTermMemory
 from memory.long_term import LongTermMemory
@@ -59,13 +60,16 @@ class WebSocketLogHandler(logging.Handler):
 class ActiveSession:
     """One active listening session, tied to a single WebSocket connection."""
 
-    def __init__(self, ws: WebSocket, config: SessionConfig, name: str = "", resume_session_id: str | None = None):
+    def __init__(self, ws: WebSocket, config: SessionConfig, name: str = "", resume_session_id: str | None = None, name_source: str = "default"):
         self.id = resume_session_id if resume_session_id else f"sess_{uuid.uuid4().hex[:12]}"
         self.ws = ws
         self.config = config
         self.name = name
+        self.name_source = name_source
         self._resume = resume_session_id is not None
         self.transcript: list[TranscriptChunk] = []
+        self.transcript_chunk_count: int = 0
+        self._auto_naming_in_progress: bool = False
         self._db = None
         self._short_term: ShortTermMemory | None = None
         self._long_term: LongTermMemory | None = None
@@ -88,12 +92,19 @@ class ActiveSession:
                 "UPDATE sessions SET ended_at = NULL, name = ?, config = ? WHERE id = ?",
                 (self.name, self.config.model_dump_json(), self.id),
             )
+            # Load existing name_source from DB if resuming
+            async with self._db.execute(
+                "SELECT name_source FROM sessions WHERE id = ?", (self.id,)
+            ) as cur:
+                row = await cur.fetchone()
+                if row:
+                    self.name_source = row[0] or "default"
             logger.info("Resuming session %s", self.id)
         else:
             # Persist new session row
             await self._db.execute(
-                "INSERT OR IGNORE INTO sessions (id, name, created_at, config) VALUES (?, ?, ?, ?)",
-                (self.id, self.name, time.time(), self.config.model_dump_json()),
+                "INSERT OR IGNORE INTO sessions (id, name, name_source, created_at, config) VALUES (?, ?, ?, ?, ?)",
+                (self.id, self.name, self.name_source, time.time(), self.config.model_dump_json()),
             )
         await self._db.commit()
 
@@ -187,7 +198,125 @@ class ActiveSession:
     async def _on_transcript(self, text: str, speaker: str) -> None:
         chunk = TranscriptChunk(text=text, speaker=speaker)
         self.transcript.append(chunk)
+        self.transcript_chunk_count += 1
         await self._emit(WsTranscriptChunk(text=text, speaker=speaker, ts=chunk.ts))
+        # Trigger auto-naming check (fire and forget)
+        asyncio.create_task(self._auto_name_task())
+
+    # ── Auto-naming ──────────────────────────────────────────────────────────
+
+    async def _auto_name_task(self) -> None:
+        """Check if auto-naming should trigger and call LLM if so."""
+        if not self.config.auto_naming_enabled:
+            return
+        if self.name_source == "user":
+            return
+        if self._auto_naming_in_progress:
+            return
+
+        first_trigger = self.config.auto_naming_first_trigger
+        repeat_interval = self.config.auto_naming_repeat_interval
+        count = self.transcript_chunk_count
+
+        should_trigger = False
+        if count == first_trigger:
+            should_trigger = True
+        elif count > first_trigger and repeat_interval > 0:
+            chunks_after_first = count - first_trigger
+            if chunks_after_first % repeat_interval == 0:
+                should_trigger = True
+
+        if not should_trigger:
+            return
+
+        self._auto_naming_in_progress = True
+        try:
+            # Gather recent transcript text (last ~20 chunks)
+            recent = self.transcript[-20:]
+            transcript_text = "\n".join(
+                f"[{c.speaker}] {c.text}" for c in recent
+            )
+
+            is_re_eval = self.name_source == "auto"
+            current_name = self.name if is_re_eval else None
+
+            new_name = await self._infer_session_name(transcript_text, current_name)
+            if new_name and new_name != self.name:
+                self.name = new_name
+                self.name_source = "auto"
+                # Persist to DB
+                if self._db:
+                    await self._db.execute(
+                        "UPDATE sessions SET name = ?, name_source = 'auto' WHERE id = ?",
+                        (new_name, self.id),
+                    )
+                    await self._db.commit()
+                # Emit WS event
+                await self._emit(WsSessionNameUpdate(name=new_name, name_source="auto"))
+                logger.info("Auto-named session %s: %s", self.id, new_name)
+        except Exception as exc:
+            logger.warning("Auto-naming failed: %s", exc)
+        finally:
+            self._auto_naming_in_progress = False
+
+    async def _infer_session_name(self, transcript_text: str, current_name: str | None = None) -> str | None:
+        """Make a simple LLM call to infer a session name from transcript content."""
+        if current_name:
+            prompt = (
+                f"You are naming a conversation session. The current auto-generated name is: \"{current_name}\"\n\n"
+                f"Here is the recent transcript:\n{transcript_text}\n\n"
+                "Based on the transcript, is the current name still accurate? "
+                "If yes, respond with the same name. If not, suggest a better name.\n"
+                "Rules: 2-5 words, concise, descriptive of the main topic. "
+                "Respond with ONLY the name, nothing else."
+            )
+        else:
+            prompt = (
+                f"You are naming a conversation session. Here is the transcript so far:\n{transcript_text}\n\n"
+                "Suggest a concise, descriptive name for this session (2-5 words). "
+                "The name should capture the main topic or theme of the conversation.\n"
+                "Respond with ONLY the name, nothing else."
+            )
+
+        try:
+            from pydantic_ai import Agent
+
+            provider = self.config.model_provider or "anthropic"
+            if provider == "openai":
+                from pydantic_ai.models.openai import OpenAIModel
+                from pydantic_ai.providers.openai import OpenAIProvider
+                model_name = self.config.agent_model or "gpt-4o"
+                model = OpenAIModel(
+                    model_name,
+                    provider=OpenAIProvider(api_key=settings.openai_api_key),
+                )
+            elif provider == "google":
+                from pydantic_ai.models.google import GoogleModel
+                from pydantic_ai.providers.google import GoogleProvider
+                model_name = self.config.agent_model or "gemini-2.5-flash"
+                model = GoogleModel(
+                    model_name,
+                    provider=GoogleProvider(api_key=settings.google_api_key),
+                )
+            else:
+                from pydantic_ai.models.anthropic import AnthropicModel
+                from pydantic_ai.providers.anthropic import AnthropicProvider
+                model_name = self.config.agent_model or settings.claude_model
+                model = AnthropicModel(
+                    model_name,
+                    provider=AnthropicProvider(api_key=settings.anthropic_api_key),
+                )
+
+            agent = Agent(model=model)
+            result = await agent.run(prompt)
+            name = result.output.strip().strip('"').strip("'")
+            # Limit to reasonable length
+            if len(name) > 100:
+                name = name[:100]
+            return name if name else None
+        except Exception as exc:
+            logger.warning("LLM call for auto-naming failed: %s", exc)
+            return None
 
     # ── Emit helpers ───────────────────────────────────────────────────────────
 
@@ -268,7 +397,9 @@ async def websocket_handler(ws: WebSocket) -> None:
                 config = SessionConfig(**data.get("config", {}))
                 name = str(data.get("name", "")).strip()
                 resume_id = str(data.get("session_id", "")).strip() or None
-                session = ActiveSession(ws, config, name=name, resume_session_id=resume_id)
+                # If client provides a non-empty, non-default name, mark as user-set
+                name_source = "user" if name and name != "New Session" else "default"
+                session = ActiveSession(ws, config, name=name, resume_session_id=resume_id, name_source=name_source)
                 action = "resume" if resume_id else "new session"
                 logger.info("session_start received (%s will be: %s)", action, session.id)
                 try:

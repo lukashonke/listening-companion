@@ -119,6 +119,27 @@ describe('appReducer', () => {
     expect(state.images[1].url).toBe('/api/images/img2.png')
     expect(state.images[2].url).toBe('/api/images/img3.png')
   })
+
+  it('updates sessionName on session_name_update event', () => {
+    const event: WSEvent = {
+      type: 'session_name_update',
+      name: 'Meeting Notes Discussion',
+      name_source: 'auto',
+    }
+    const next = appReducer(initialState, event)
+    expect(next.sessionName).toBe('Meeting Notes Discussion')
+  })
+
+  it('session_name_update replaces existing session name', () => {
+    const stateWithName = { ...initialState, sessionName: 'Old Name' }
+    const event: WSEvent = {
+      type: 'session_name_update',
+      name: 'New Auto Name',
+      name_source: 'auto',
+    }
+    const next = appReducer(stateWithName, event)
+    expect(next.sessionName).toBe('New Auto Name')
+  })
 })
 
 describe('DEFAULT_CONFIG background AI fields', () => {

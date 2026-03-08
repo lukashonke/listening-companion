@@ -253,7 +253,7 @@ async def list_sessions(offset: int = 0, limit: int = 20):
         row = await cursor.fetchone()
         total = row[0]
     async with db.execute(
-        "SELECT id, name, created_at, ended_at, config FROM sessions ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        "SELECT id, name, name_source, created_at, ended_at, config FROM sessions ORDER BY created_at DESC LIMIT ? OFFSET ?",
         (limit, offset),
     ) as cursor:
         rows = await cursor.fetchall()
@@ -264,7 +264,7 @@ async def list_sessions(offset: int = 0, limit: int = 20):
 async def get_session(session_id: str):
     db = await get_db()
     async with db.execute(
-        "SELECT id, name, created_at, ended_at, config FROM sessions WHERE id = ?",
+        "SELECT id, name, name_source, created_at, ended_at, config FROM sessions WHERE id = ?",
         (session_id,),
     ) as cursor:
         row = await cursor.fetchone()
@@ -294,9 +294,12 @@ async def rename_session(session_id: str, body: RenameSessionRequest):
         row = await cursor.fetchone()
     if row is None:
         return JSONResponse({"error": "Session not found"}, status_code=404)
-    await db.execute("UPDATE sessions SET name = ? WHERE id = ?", (body.name.strip(), session_id))
+    await db.execute(
+        "UPDATE sessions SET name = ?, name_source = 'user' WHERE id = ?",
+        (body.name.strip(), session_id),
+    )
     await db.commit()
-    return {"id": session_id, "name": body.name.strip()}
+    return {"id": session_id, "name": body.name.strip(), "name_source": "user"}
 
 
 @app.get("/api/sessions/{session_id}/images")

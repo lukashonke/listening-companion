@@ -10,6 +10,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL DEFAULT '',
+    name_source TEXT NOT NULL DEFAULT 'default',
     created_at  REAL NOT NULL,
     ended_at    REAL,
     config      TEXT NOT NULL DEFAULT '{}'
@@ -58,7 +59,21 @@ async def get_db() -> aiosqlite.Connection:
             _db.row_factory = aiosqlite.Row
             await _db.executescript(SCHEMA)
             await _db.commit()
+            # Migrations for existing databases
+            await _migrate(_db)
     return _db
+
+
+async def _migrate(db: aiosqlite.Connection) -> None:
+    """Apply incremental migrations for columns added after initial schema."""
+    # Add name_source column to sessions if missing
+    async with db.execute("PRAGMA table_info(sessions)") as cur:
+        cols = {row[1] for row in await cur.fetchall()}
+    if "name_source" not in cols:
+        await db.execute(
+            "ALTER TABLE sessions ADD COLUMN name_source TEXT NOT NULL DEFAULT 'default'"
+        )
+        await db.commit()
 
 
 async def close_db() -> None:

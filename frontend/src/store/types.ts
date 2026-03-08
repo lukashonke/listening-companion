@@ -107,3 +107,4 @@ export type WSEvent =
   | { type: 'tts_chunk'; audio_b64: string; text: string }
   | { type: 'error'; code: string; message: string; fatal: boolean }
   | { type: 'log'; level: LogLevel; message: string; ts: number }
+  | { type: 'session_name_update'; name: string; name_source: string }
