@@ -141,6 +141,26 @@ describe('appReducer', () => {
     expect(next.sessionName).toBe('New Auto Name')
   })
 
+  it('session_name_update stores name_source in state', () => {
+    const event: WSEvent = {
+      type: 'session_name_update',
+      name: 'Auto Named Session',
+      name_source: 'auto',
+    }
+    const next = appReducer(initialState, event)
+    expect(next.sessionNameSource).toBe('auto')
+  })
+
+  it('session_name_update tracks user name_source', () => {
+    const event: WSEvent = {
+      type: 'session_name_update',
+      name: 'User Named Session',
+      name_source: 'user',
+    }
+    const next = appReducer(initialState, event)
+    expect(next.sessionNameSource).toBe('user')
+  })
+
   it('updates sessionSummary on session_summary_update event', () => {
     const event: WSEvent = {
       type: 'session_summary_update',
@@ -186,6 +206,10 @@ describe('DEFAULT_CONFIG background AI fields', () => {
 
   it('has empty sessionSummary in initial state', () => {
     expect(initialState.sessionSummary).toBe('')
+  })
+
+  it('has default sessionNameSource in initial state', () => {
+    expect(initialState.sessionNameSource).toBe('default')
   })
 })
 
@@ -236,5 +260,15 @@ describe('uiReducer', () => {
     const action: UIAction = { type: 'RESET_SESSION' }
     const next = uiReducer(stateWithSummary, action)
     expect(next.sessionSummary).toBe('')
+  })
+
+  it('RESET_SESSION resets sessionNameSource to default', () => {
+    const stateWithNameSource = {
+      ...initialState,
+      sessionNameSource: 'auto',
+    }
+    const action: UIAction = { type: 'RESET_SESSION' }
+    const next = uiReducer(stateWithNameSource, action)
+    expect(next.sessionNameSource).toBe('default')
   })
 })

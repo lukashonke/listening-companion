@@ -216,6 +216,36 @@
   
   Run tests with: `cd backend && python -m pytest tests/ -v`
 
+## Round 7 — Agent Context & Invocation
+
+- [ ] **R18: Improve agent context window**
+  The agent currently only sees new transcripts since the last agent run. This is too limited — it has no conversation history and loses context.
+  
+  **Change to provide the agent with:**
+  1. **Full chat history** (or a rolling window) of transcripts — not just the delta since last run. The agent should see prior conversation like a chat history so it understands the full context.
+  2. **Tool call history** in an efficient form:
+     - **Image generation tools:** include the full parameters (prompt, style, provider, model) so the agent knows what images were already generated and with what prompts.
+     - **Memory edit tools:** only mention that they were called (e.g., "memory_update was called") — the agent can see the current memory state directly, so it doesn't need the full history of memory edits.
+     - **TTS (speak) tools:** include the full text that was spoken, so the agent knows what it already said and doesn't repeat itself.
+  3. Structure this as a conversation-style context the agent can reason over, not just a raw dump.
+
+- [ ] **R19: Trigger agent on every committed transcript**
+  Currently the agent runs on a timer interval (`agent_interval_s`). Change it so the agent is invoked **after every committed transcript chunk** — but only if it's not already running.
+  
+  - When a `committed_transcript` arrives from STT, check if the agent is currently processing. If not, trigger an agent run.
+  - If the agent IS running, skip (don't queue — the next transcript will trigger it).
+  - Keep the interval-based trigger as a fallback (or remove it if the transcript-based trigger is sufficient — TBD).
+  - This makes the agent more responsive to the conversation flow rather than waiting for a fixed timer.
+
+- [ ] **R20: Expose full agent system prompt in settings**
+  The current "custom system prompt" field only appends to the built-in prompt. Instead, expose the **full agent system prompt** in the settings so it can be fully customized.
+  
+  - Add a new settings field (textarea) showing the complete system prompt template (including the built-in parts).
+  - Allow the user to edit the entire prompt freely.
+  - If the field is empty or reset, fall back to the built-in default prompt.
+  - Persist in localStorage and send via session config like other settings.
+  - Backend: use the user-provided prompt as-is (with variable substitution for `{theme}`, `{memory}`, etc.) instead of always prepending the built-in template.
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03

@@ -89,6 +89,7 @@ export interface AppState {
   error: AppError | null
   isRecording: boolean
   sessionName: string
+  sessionNameSource: string
   sessionSummary: string
   config: SessionConfig
   resumeSessionId: string | null
