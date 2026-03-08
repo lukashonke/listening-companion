@@ -4,6 +4,8 @@ export interface SessionConfig {
   voice_id: string;
   agent_interval_s: number;
   image_provider: string;
+  image_model: string;
+  image_prompt_theme: string;
   tools: string[];
   speaker_diarization: boolean;
   audio_chunk_ms: number;

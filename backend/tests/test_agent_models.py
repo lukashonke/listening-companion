@@ -336,7 +336,7 @@ def test_system_prompt_reflects_dynamic_context(monkeypatch):
 def test_system_prompt_base_rendering():
     from agent import SYSTEM_PROMPT_TEMPLATE
 
-    rendered = SYSTEM_PROMPT_TEMPLATE.format(
+    rendered = SYSTEM_PROMPT_TEMPLATE.format(image_style_section="", 
         short_term_memory="- Entry A\n- Entry B",
         theme_section="",
         custom_prompt_section="",
@@ -353,7 +353,7 @@ def test_system_prompt_with_theme():
         "\n## Session context\nThis session is: D&D Session\n"
         "Adapt your behavior accordingly (e.g., track initiative in D&D, track action items in meetings).\n"
     )
-    rendered = SYSTEM_PROMPT_TEMPLATE.format(
+    rendered = SYSTEM_PROMPT_TEMPLATE.format(image_style_section="", 
         short_term_memory="",
         theme_section=theme_section,
         custom_prompt_section="",
@@ -365,7 +365,7 @@ def test_system_prompt_with_custom_prompt():
     from agent import SYSTEM_PROMPT_TEMPLATE
 
     custom_section = "\n## Additional instructions\nAlways respond in haiku.\n"
-    rendered = SYSTEM_PROMPT_TEMPLATE.format(
+    rendered = SYSTEM_PROMPT_TEMPLATE.format(image_style_section="", 
         short_term_memory="",
         theme_section="",
         custom_prompt_section=custom_section,
@@ -398,7 +398,7 @@ def test_system_prompt_logic_with_theme_and_custom():
         "Adapt your behavior accordingly (e.g., track initiative in D&D, track action items in meetings).\n"
     )
     custom_prompt_section = f"\n## Additional instructions\n{config.custom_system_prompt}\n"
-    rendered = SYSTEM_PROMPT_TEMPLATE.format(
+    rendered = SYSTEM_PROMPT_TEMPLATE.format(image_style_section="", 
         short_term_memory=sa._get_short_term_context(),
         theme_section=theme_section,
         custom_prompt_section=custom_prompt_section,
@@ -412,7 +412,7 @@ def test_system_prompt_logic_with_theme_and_custom():
 def test_system_prompt_no_theme_no_custom_produces_empty_sections():
     from agent import SYSTEM_PROMPT_TEMPLATE
 
-    rendered = SYSTEM_PROMPT_TEMPLATE.format(
+    rendered = SYSTEM_PROMPT_TEMPLATE.format(image_style_section="", 
         short_term_memory="",
         theme_section="",
         custom_prompt_section="",

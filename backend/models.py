@@ -20,6 +20,8 @@ class SessionConfig(BaseModel):
     voice_id: str = "JBFqnCBsd6RMkjVDRZzb"
     agent_interval_s: int = 30
     image_provider: str = "placeholder"
+    image_model: str = ""  # empty = use provider default
+    image_prompt_theme: str = ""  # style/theme instructions prepended to image prompts
     speaker_diarization: bool = False
     # R5: custom system prompt appended to the built-in prompt
     custom_system_prompt: str = ""

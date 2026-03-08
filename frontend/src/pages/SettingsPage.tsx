@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useAppContext } from '@/context/AppContext'
+import { apiFetch } from '@/lib/auth'
 
 const AGENT_INTERVALS = [10, 30, 60, 120]
 
 const IMAGE_PROVIDERS = [
   { value: 'placeholder', label: 'Placeholder (no API key)' },
-  { value: 'openai', label: 'OpenAI (gpt-image-1)' },
-  { value: 'gemini', label: 'Google Gemini (gemini-2.0-flash-preview-image-generation)' },
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'gemini', label: 'Google Gemini' },
+]
+
+const OPENAI_IMAGE_MODELS_FALLBACK = [
+  { value: 'gpt-image-1', label: 'gpt-image-1' },
+  { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' },
+  { value: 'dall-e-3', label: 'dall-e-3' },
+]
+
+const GEMINI_IMAGE_MODELS_FALLBACK = [
+  { value: 'gemini-2.5-flash-image', label: 'gemini-2.5-flash-image' },
+  { value: 'gemini-3-pro-image-preview', label: 'gemini-3-pro-image-preview' },
+  { value: 'nano-banana-pro-preview', label: 'nano-banana-pro-preview' },
+  { value: 'imagen-4.0-generate-001', label: 'imagen-4.0-generate-001' },
 ]
 
 const AUDIO_CHUNK_OPTIONS = [
@@ -95,13 +109,15 @@ export function SettingsPage() {
   const [loadingOpenaiModels, setLoadingOpenaiModels] = useState(false)
   const [geminiModels, setGeminiModels] = useState<{ value: string; label: string }[] | null>(null)
   const [loadingGeminiModels, setLoadingGeminiModels] = useState(false)
+  const [openaiImageModels, setOpenaiImageModels] = useState<{ value: string; label: string }[] | null>(null)
+  const [geminiImageModels, setGeminiImageModels] = useState<{ value: string; label: string }[] | null>(null)
   const [voices, setVoices] = useState<{ id: string; name: string; category: string }[]>([])
   const [loadingVoices, setLoadingVoices] = useState(false)
 
   useEffect(() => {
     if (config.model_provider !== 'openai') return
     setLoadingOpenaiModels(true)
-    fetch('/api/models/openai')
+    apiFetch('/api/models/openai')
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data.models) && data.models.length > 0) {
@@ -115,7 +131,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (config.model_provider !== 'google') return
     setLoadingGeminiModels(true)
-    fetch('/api/models/gemini')
+    apiFetch('/api/models/gemini')
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data.models) && data.models.length > 0) {
@@ -128,7 +144,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     setLoadingVoices(true)
-    fetch('/api/voices/elevenlabs')
+    apiFetch('/api/voices/elevenlabs')
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data.voices) && data.voices.length > 0) {
@@ -137,6 +153,28 @@ export function SettingsPage() {
       })
       .catch(() => { /* keep empty — user can still type voice_id */ })
       .finally(() => setLoadingVoices(false))
+  }, [])
+
+  useEffect(() => {
+    apiFetch('/api/models/openai-image')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.models) && data.models.length > 0) {
+          setOpenaiImageModels(data.models.map((id: string) => ({ value: id, label: id })))
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    apiFetch('/api/models/gemini-image')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.models) && data.models.length > 0) {
+          setGeminiImageModels(data.models.map((id: string) => ({ value: id, label: id })))
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const updateConfig = (patch: Partial<typeof config>) => {
@@ -156,6 +194,15 @@ export function SettingsPage() {
     config.model_provider === 'google' ? 'gemini-2.5-flash' :
     'claude-sonnet-4-6'
   const showReasoningEffort = config.model_provider === 'openai' && isReasoningModel(config.agent_model)
+
+  const imageModels =
+    config.image_provider === 'openai' ? (openaiImageModels ?? OPENAI_IMAGE_MODELS_FALLBACK) :
+    config.image_provider === 'gemini' ? (geminiImageModels ?? GEMINI_IMAGE_MODELS_FALLBACK) :
+    []
+  const defaultImageModel =
+    config.image_provider === 'openai' ? 'gpt-image-1' :
+    config.image_provider === 'gemini' ? 'gemini-2.5-flash-image' :
+    ''
 
   return (
     <div className="h-full overflow-y-auto">
@@ -371,13 +418,42 @@ export function SettingsPage() {
           <select
             className="w-full px-3 py-2 rounded-md border bg-background text-sm"
             value={config.image_provider}
-            onChange={e => updateConfig({ image_provider: e.target.value })}
+            onChange={e => updateConfig({ image_provider: e.target.value, image_model: '' })}
           >
             {IMAGE_PROVIDERS.map(p => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
         </div>
+
+        {config.image_provider !== 'placeholder' && imageModels.length > 0 && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Image Model</label>
+            <select
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              value={config.image_model || defaultImageModel}
+              onChange={e => updateConfig({ image_model: e.target.value })}
+            >
+              {imageModels.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {config.image_provider !== 'placeholder' && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Image Style / Theme</label>
+            <textarea
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm min-h-[60px] resize-y"
+              value={config.image_prompt_theme}
+              onChange={e => updateConfig({ image_prompt_theme: e.target.value })}
+              placeholder="e.g. D&D fantasy art style, watercolor, dark and moody, anime style..."
+              rows={2}
+            />
+            <p className="text-xs text-muted-foreground">Style instructions added to every image generation prompt</p>
+          </div>
+        )}
       </section>
 
       {isRecording && (

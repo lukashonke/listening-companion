@@ -1,20 +1,58 @@
+import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TranscriptTab } from '@/tabs/TranscriptTab'
 import { AgentLogTab } from '@/tabs/AgentLogTab'
 import { MemoryTab } from '@/tabs/MemoryTab'
 import { LogsTab } from '@/tabs/LogsTab'
 import { useAppContext } from '@/context/AppContext'
-import { FileText, Wrench, Brain, ImageIcon, ArrowLeft, Terminal } from 'lucide-react'
+import { FileText, Wrench, Brain, ImageIcon, ArrowLeft, Terminal, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { SessionImagesTab } from '@/tabs/SessionImagesTab'
 
 export function ActiveSessionPage() {
-  const { state } = useAppContext()
+  const { state, dispatchUI } = useAppContext()
   const navigate = useNavigate()
+  const [showSessionSettings, setShowSessionSettings] = useState(false)
 
   return (
     <Tabs defaultValue="transcript" className="flex flex-col h-full">
+      {/* Session settings (collapsible) */}
+      <div className="border-b border-border px-4 py-2 shrink-0">
+        <button
+          onClick={() => setShowSessionSettings(v => !v)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+        >
+          {showSessionSettings ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <span className="font-medium">Session Settings</span>
+          {state.sessionName && state.sessionName !== 'New Session' && (
+            <span className="text-foreground ml-1">— {state.sessionName}</span>
+          )}
+        </button>
+        {showSessionSettings && (
+          <div className="mt-2 space-y-2 max-w-lg">
+            <div>
+              <label className="text-xs text-muted-foreground">Session Name</label>
+              <input
+                className="w-full px-2 py-1 rounded-md border bg-background text-sm mt-0.5"
+                value={state.sessionName}
+                onChange={e => dispatchUI({ type: 'SET_SESSION_NAME', payload: e.target.value })}
+                placeholder="Session name"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Theme / Context</label>
+              <input
+                className="w-full px-2 py-1 rounded-md border bg-background text-sm mt-0.5"
+                value={state.config.theme}
+                onChange={e => dispatchUI({ type: 'SET_CONFIG', payload: { theme: e.target.value } })}
+                placeholder="e.g. D&D session, meeting, lecture…"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="border-b border-border px-4 shrink-0 flex items-center gap-2">
         <Button
           variant="ghost"

@@ -4,8 +4,9 @@ import { AppLayout } from './AppLayout'
 import { SessionsPage } from '@/pages/SessionsPage'
 import { ActiveSessionPage } from '@/pages/ActiveSessionPage'
 import { SessionDetailPage } from '@/pages/SessionDetailPage'
-import { MemoryPage } from '@/pages/MemoryPage'
-import { ImagesPage } from '@/pages/ImagesPage'
+// Memory & Images pages removed from nav — data is session-scoped (shown in session tabs)
+// import { MemoryPage } from '@/pages/MemoryPage'
+// import { ImagesPage } from '@/pages/ImagesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { PasswordGate } from '@/components/PasswordGate'
 
@@ -20,8 +21,7 @@ export default function App() {
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/sessions/current" element={<ActiveSessionPage />} />
               <Route path="/sessions/:id" element={<SessionDetailPage />} />
-              <Route path="/memory" element={<MemoryPage />} />
-              <Route path="/images" element={<ImagesPage />} />
+              {/* Memory & Images removed from sidebar — data is session-scoped */}
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Routes>

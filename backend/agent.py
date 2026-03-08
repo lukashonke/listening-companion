@@ -25,7 +25,7 @@ You have tools to:
 - Manage short-term memory (save, update, remove entries by ID)
 - Archive to long-term memory and search past conversations
 - Speak responses aloud (answer_tts) — use sparingly, only when genuinely helpful
-- Generate images when the conversation references something visual
+- Generate images when the conversation references something visual{image_style_section}
 - Track entities, action items, quotes (if those tools are enabled)
 
 ## Guidelines
@@ -106,10 +106,14 @@ class SessionAgent:
             custom_prompt_section = ""
             if config.custom_system_prompt:
                 custom_prompt_section = f"\n## Additional instructions\n{config.custom_system_prompt}\n"
+            image_style_section = ""
+            if config.image_prompt_theme:
+                image_style_section = f"\n  - When generating images, always incorporate this style/theme: {config.image_prompt_theme}"
             return SYSTEM_PROMPT_TEMPLATE.format(
                 short_term_memory=get_context(),
                 theme_section=theme_section,
                 custom_prompt_section=custom_prompt_section,
+                image_style_section=image_style_section,
             )
 
         return agent

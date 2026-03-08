@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { History, Brain, ImageIcon, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { History, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
 import { NavItem } from './NavItem'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button'
 
 const NAV_ITEMS = [
   { to: '/sessions', icon: History, label: 'Sessions' },
-  { to: '/memory', icon: Brain, label: 'Memory' },
-  { to: '/images', icon: ImageIcon, label: 'Images' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ] as const
 

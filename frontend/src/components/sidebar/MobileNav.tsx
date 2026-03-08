@@ -1,11 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { History, Brain, ImageIcon, Settings } from 'lucide-react'
+import { History, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { to: '/sessions', icon: History, label: 'Sessions' },
-  { to: '/memory', icon: Brain, label: 'Memory' },
-  { to: '/images', icon: ImageIcon, label: 'Images' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ] as const
 

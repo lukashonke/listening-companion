@@ -46,7 +46,7 @@ export function LogsTab() {
           Clear
         </Button>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0 overflow-hidden">
         <div className="px-4 py-2 font-mono text-xs space-y-0.5">
           {state.logs.length === 0 && (
             <div className="flex items-center justify-center h-24 text-muted-foreground">

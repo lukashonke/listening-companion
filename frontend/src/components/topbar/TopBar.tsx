@@ -80,26 +80,6 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
         <span className="hidden sm:inline">New Session</span>
       </Button>
 
-      {/* Session name — editable, hidden on mobile */}
-      <input
-        className="hidden md:block text-sm font-medium bg-transparent border-none outline-none focus:ring-1 focus:ring-border rounded px-1 truncate max-w-xs text-foreground placeholder:text-muted-foreground"
-        value={state.sessionName}
-        onChange={(e) => dispatchUI({ type: 'SET_SESSION_NAME', payload: e.target.value })}
-        placeholder="Session name"
-        aria-label="Session name"
-      />
-
-      {/* Session theme — per-session context, shown when not recording */}
-      {!state.isRecording && (
-        <input
-          className="hidden md:block text-xs bg-transparent border-none outline-none focus:ring-1 focus:ring-border rounded px-1 truncate max-w-[200px] text-muted-foreground placeholder:text-muted-foreground/60"
-          value={state.config.theme}
-          onChange={(e) => dispatchUI({ type: 'SET_CONFIG', payload: { theme: e.target.value } })}
-          placeholder="Theme (meeting, D&D, lecture…)"
-          aria-label="Session theme"
-        />
-      )}
-
       <div className="flex-1" />
 
       {/* Agent thinking indicator */}

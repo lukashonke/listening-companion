@@ -4,6 +4,8 @@ const DEFAULT_CONFIG: SessionConfig = {
   voice_id: 'JBFqnCBsd6RMkjVDRZzb',
   agent_interval_s: 30,
   image_provider: 'placeholder',
+  image_model: '',
+  image_prompt_theme: '',
   tools: [],
   speaker_diarization: false,
   audio_chunk_ms: 200,

@@ -172,6 +172,40 @@ async def list_gemini_models():
 
 
 # ---------------------------------------------------------------------------
+# Image models endpoints
+# ---------------------------------------------------------------------------
+
+_OPENAI_IMAGE_MODELS = [
+    "gpt-image-1",
+    "gpt-image-1-mini",
+    "gpt-image-1.5",
+    "chatgpt-image-latest",
+    "dall-e-3",
+    "dall-e-2",
+]
+
+_GEMINI_IMAGE_MODELS = [
+    "gemini-2.5-flash-image",
+    "gemini-3.1-flash-image-preview",
+    "gemini-3-pro-image-preview",
+    "nano-banana-pro-preview",
+    "imagen-4.0-generate-001",
+    "imagen-4.0-fast-generate-001",
+    "imagen-4.0-ultra-generate-001",
+]
+
+
+@app.get("/api/models/openai-image")
+async def list_openai_image_models():
+    return {"models": _OPENAI_IMAGE_MODELS}
+
+
+@app.get("/api/models/gemini-image")
+async def list_gemini_image_models():
+    return {"models": _GEMINI_IMAGE_MODELS}
+
+
+# ---------------------------------------------------------------------------
 # ElevenLabs voices cache
 # ---------------------------------------------------------------------------
 _elevenlabs_voices_cache: list[dict] | None = None
