@@ -1,0 +1,67 @@
+{
+  "flowId": "session-data-api",
+  "testedAt": "2026-03-08T16:30:00Z",
+  "credentials": {
+    "account": "no-auth",
+    "namespace": "8689de4b9006__data"
+  },
+  "toolsUsed": ["agent-browser", "curl", "python3-sqlite3"],
+  "assertions": {
+    "VAL-NAME-005": {
+      "status": "pass",
+      "title": "Name source tracked in database",
+      "steps": [
+        { "action": "Query PRAGMA table_info(sessions)", "expected": "name_source column exists", "observed": "Column 5: name_source TEXT NOT NULL DEFAULT 'default'" },
+        { "action": "Query SELECT DISTINCT name_source FROM sessions", "expected": "Values include default, auto, user", "observed": "Three distinct values: ('default',), ('auto',), ('user',)" },
+        { "action": "Query sample sessions", "expected": "Correct name_source per session type", "observed": "sess_test_auto_named has 'auto', sess_test_user_renamed has 'user', test sessions have 'default'" }
+      ],
+      "evidence": "SQLite query: sessions table has name_source column (TEXT NOT NULL DEFAULT 'default'). Distinct values: default, auto, user. sess_test_auto_named=auto, sess_test_user_renamed=user, others=default.",
+      "issues": null
+    },
+    "VAL-NAME-006": {
+      "status": "pass",
+      "title": "Auto-generated name visible in sessions list",
+      "steps": [
+        { "action": "Navigate to http://localhost:5173/", "expected": "Sessions list displayed", "observed": "Sessions page loaded with Past Sessions list" },
+        { "action": "Look for auto-named session", "expected": "Deep Discussion on AI Ethics visible", "observed": "Session 'Deep Discussion on AI Ethics' visible in list with date 3/8/2026 4:13:30 PM" }
+      ],
+      "evidence": "Screenshot /tmp/sessions-list.png shows 'Deep Discussion on AI Ethics' in the Past Sessions list, second entry after 'Test Session 25'.",
+      "issues": null
+    },
+    "VAL-SUM-006": {
+      "status": "pass",
+      "title": "Past session summary visible",
+      "steps": [
+        { "action": "Navigate to http://localhost:5173/sessions/sess_test_auto_named", "expected": "Session detail page loads", "observed": "Page loaded showing 'Deep Discussion on AI Ethics'" },
+        { "action": "Check for summary text", "expected": "Summary about ethical implications of AI visible", "observed": "SUMMARY section shows: 'This session covered the ethical implications of AI in modern society. Topics included algorithmic bias, privacy concerns, and the need for regulatory frameworks. The participants discussed real-world examples from healthcare and criminal justice systems.'" }
+      ],
+      "evidence": "Screenshot /tmp/session-detail-summary.png shows SUMMARY section with full text about ethical implications of AI in modern society.",
+      "issues": null
+    },
+    "VAL-CROSS-001": {
+      "status": "pass",
+      "title": "End-to-end image persistence",
+      "steps": [
+        { "action": "curl GET /api/sessions/sess_test_401b713cf8fd/images", "expected": "200 with array of image objects", "observed": "200 with 2 images: img_22309963efe5.png and img_abc47956cf9f.png, both with /api/images/ URLs" },
+        { "action": "curl GET /api/images/img_22309963efe5.png", "expected": "200 with image/png content-type", "observed": "HTTP 200, Content-Type: image/png, Size: 75 bytes" },
+        { "action": "Navigate to session detail page for Test Session 1", "expected": "Session detail loads", "observed": "Page loaded showing 'Test Session 1'" },
+        { "action": "Click Images (2) tab", "expected": "Images displayed", "observed": "2 images (red and green test PNGs) displayed in grid layout" }
+      ],
+      "evidence": "API: curl returns 2 image objects with /api/images/ URLs, individual image serves as image/png 200 OK. UI: Screenshot /tmp/session-images.png shows 2 test images rendered on session detail page.",
+      "issues": null
+    },
+    "VAL-CROSS-003": {
+      "status": "pass",
+      "title": "Summary visible in past session detail",
+      "steps": [
+        { "action": "Navigate to http://localhost:5173/sessions/sess_test_auto_named", "expected": "Session detail with summary", "observed": "Page shows SUMMARY section with text about ethical implications of AI" },
+        { "action": "Verify summary content", "expected": "Text mentions ethical implications of AI", "observed": "Summary text: 'This session covered the ethical implications of AI in modern society. Topics included algorithmic bias, privacy concerns, and the need for regulatory frameworks.'" }
+      ],
+      "evidence": "Screenshot /tmp/session-detail-summary.png confirms summary text about 'ethical implications of AI in modern society' is displayed on the session detail page.",
+      "issues": null
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 assertions: all 5 passed. Database has correct name_source values (default/auto/user), auto-named session appears in sessions list, summary text is visible on past session detail page, and images persist and display correctly via /api/images/ URLs."
+}

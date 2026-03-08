@@ -1,0 +1,95 @@
+{
+  "flowId": "panel-layout-ui",
+  "testedAt": "2026-03-08T12:00:00Z",
+  "credentials": {
+    "account": "none",
+    "namespace": "no-auth"
+  },
+  "toolsUsed": ["agent-browser"],
+  "assertions": {
+    "VAL-PANEL-001": {
+      "status": "pass",
+      "title": "Three-panel layout on active session",
+      "steps": [
+        { "action": "Set viewport to 1280x800", "expected": "Desktop width viewport", "observed": "Viewport set successfully" },
+        { "action": "Navigate to http://localhost:5173/sessions/current", "expected": "Active session page loads", "observed": "Page loaded with 'Waiting for the story to begin...' message" },
+        { "action": "Take screenshot", "expected": "Three panels visible: left sidebar, main content, right metadata panel", "observed": "Screenshot confirms three-panel layout: left sidebar (Sessions/Settings nav), main content area (tabs + waiting message), right metadata panel (SESSION INFO + SUMMARY sections)" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/panel-desktop-full.png"],
+        "consoleErrors": "none",
+        "network": "GET http://localhost:5173/sessions/current -> 200"
+      },
+      "issues": null
+    },
+    "VAL-PANEL-002": {
+      "status": "pass",
+      "title": "Summary displayed in right panel (empty state)",
+      "steps": [
+        { "action": "Navigate to active session page (no live session)", "expected": "Right panel shows empty state message", "observed": "Right panel shows 'SUMMARY' heading and text: 'Summary will appear after the first summarization cycle'" },
+        { "action": "Check data-testid='summary-empty-state'", "expected": "Element exists with empty state text", "observed": "Found: <p data-testid='summary-empty-state'>Summary will appear after the first summarization…</p>" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/panel-desktop-full.png"],
+        "consoleErrors": "none",
+        "dataTestIds": {
+          "summary-empty-state": "present - text: 'Summary will appear after the first summarization cycle'"
+        }
+      },
+      "issues": null
+    },
+    "VAL-PANEL-004": {
+      "status": "pass",
+      "title": "Session metadata shown in right panel",
+      "steps": [
+        { "action": "Check data-testid='session-name'", "expected": "Session name displayed", "observed": "Found: <p data-testid='session-name'>New Session</p>" },
+        { "action": "Check data-testid='session-duration'", "expected": "Duration displayed", "observed": "Found: <p data-testid='session-duration'>—</p> (dash indicating no active session)" },
+        { "action": "Verify SESSION INFO section visible in screenshot", "expected": "Name, Duration labels visible in right panel", "observed": "Screenshot shows 'Name: New Session Default' and 'Duration: —' in the right panel under SESSION INFO heading" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/panel-desktop-full.png"],
+        "consoleErrors": "none",
+        "dataTestIds": {
+          "session-name": "present - text: 'New Session'",
+          "session-duration": "present - text: '—'"
+        }
+      },
+      "issues": null
+    },
+    "VAL-PANEL-005": {
+      "status": "pass",
+      "title": "Responsive collapse on mobile",
+      "steps": [
+        { "action": "Resize viewport to 600x800 (below 768px)", "expected": "Right metadata panel hidden", "observed": "Right panel completely hidden; left sidebar replaced by bottom navigation bar (Sessions/Settings)" },
+        { "action": "Take mobile screenshot", "expected": "Only main content visible, no right panel", "observed": "Screenshot confirms only main content area visible with 'Waiting for the story to begin...' and bottom nav bar" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/panel-mobile.png"],
+        "consoleErrors": "none",
+        "responsiveClass": "aside has class 'hidden md:flex' — hidden below 768px (md breakpoint)"
+      },
+      "issues": null
+    },
+    "VAL-CROSS-002": {
+      "status": "pass",
+      "title": "Auto-naming UI components exist in right panel",
+      "steps": [
+        { "action": "Check data-testid='session-name'", "expected": "Session name display element exists", "observed": "Found: <p data-testid='session-name'>New Session</p>" },
+        { "action": "Check data-testid='name-source-badge'", "expected": "Name source badge element exists", "observed": "Found: <span data-testid='name-source-badge'>Default</span> (badge with outline variant)" },
+        { "action": "Verify visual appearance in screenshot", "expected": "Name and badge visible in right panel", "observed": "Screenshot shows 'New Session' with 'Default' badge next to it in the SESSION INFO section" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/panel-desktop-full.png"],
+        "consoleErrors": "none",
+        "dataTestIds": {
+          "session-name": "present - text: 'New Session'",
+          "name-source-badge": "present - text: 'Default'"
+        }
+      },
+      "issues": null
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 assertions: all 5 passed. Three-panel layout confirmed at desktop width (1280px). Right panel contains session name, name-source badge, duration, and summary empty state — all with correct data-testid attributes. Responsive collapse confirmed at 600px width (right panel hidden, sidebar becomes bottom nav)."
+}

@@ -1,0 +1,87 @@
+{
+  "flowId": "config-settings-ui",
+  "testedAt": "2026-03-08T12:00:00Z",
+  "credentials": {
+    "account": "none (no auth)",
+    "namespace": "config-settings"
+  },
+  "toolsUsed": ["agent-browser"],
+  "assertions": {
+    "VAL-CFG-001": {
+      "status": "pass",
+      "title": "Auto-naming settings in Settings page",
+      "steps": [
+        { "action": "Navigate to http://localhost:5173/settings", "expected": "Settings page displayed", "observed": "Settings page displayed" },
+        { "action": "Scroll to Background AI Features section", "expected": "Auto-Naming section visible", "observed": "Auto-Naming section visible with toggle, First Trigger (chunks) input, and Repeat Interval (chunks) input" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/settings-scrolled-bottom.png", "/tmp/settings-annotated.png"],
+        "consoleErrors": "none",
+        "details": "Background AI Features section shows Auto-Naming with: enable/disable toggle (aria-pressed), First Trigger (chunks) spinbutton defaulting to 5, Repeat Interval (chunks) spinbutton defaulting to 10. When toggle is off, the spinbutton inputs are hidden."
+      },
+      "issues": null
+    },
+    "VAL-CFG-002": {
+      "status": "pass",
+      "title": "Auto-summarization settings in Settings page",
+      "steps": [
+        { "action": "Navigate to http://localhost:5173/settings", "expected": "Settings page displayed", "observed": "Settings page displayed" },
+        { "action": "Scroll to Background AI Features section", "expected": "Auto-Summarization section visible", "observed": "Auto-Summarization section visible with toggle, Summarization Interval (seconds) input, and Max Transcript Length (chars) input" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/settings-scrolled-bottom.png", "/tmp/settings-annotated.png"],
+        "consoleErrors": "none",
+        "details": "Auto-Summarization section shows: enable/disable toggle (aria-pressed), Summarization Interval (seconds) spinbutton defaulting to 300, Max Transcript Length (chars) spinbutton defaulting to 50000. When toggle is off, the spinbutton inputs are hidden."
+      },
+      "issues": null
+    },
+    "VAL-CFG-003": {
+      "status": "pass",
+      "title": "Settings persist across refresh",
+      "steps": [
+        { "action": "Toggle auto-naming OFF via JS click", "expected": "auto_naming_enabled becomes false in localStorage", "observed": "localStorage lc_config.auto_naming_enabled = false" },
+        { "action": "Change summarization interval to 120 via fill command", "expected": "auto_summarization_interval becomes 120 in localStorage", "observed": "localStorage lc_config.auto_summarization_interval = 120" },
+        { "action": "Reload the page", "expected": "Settings restored from localStorage", "observed": "Auto-Naming toggle still OFF, Summarization Interval still 120, Max Transcript Length still 50000" },
+        { "action": "Verify localStorage after refresh", "expected": "Same values as before refresh", "observed": "auto_naming_enabled=false, auto_summarization_interval=120 confirmed in localStorage" }
+      ],
+      "evidence": {
+        "screenshots": ["/tmp/settings-before-refresh.png", "/tmp/settings-after-refresh.png"],
+        "consoleErrors": "none",
+        "localStorage_before": "{auto_naming_enabled:false, auto_naming_first_trigger:5, auto_naming_repeat_interval:10, auto_summarization_enabled:true, auto_summarization_interval:120, auto_summarization_max_transcript_length:50000}",
+        "localStorage_after": "{auto_naming_enabled:false, auto_naming_first_trigger:5, auto_naming_repeat_interval:10, auto_summarization_enabled:true, auto_summarization_interval:120, auto_summarization_max_transcript_length:50000}"
+      },
+      "issues": null
+    },
+    "VAL-CFG-004": {
+      "status": "pass",
+      "title": "Settings sent to backend in session config",
+      "steps": [
+        { "action": "Check DEFAULT_CONFIG in frontend/src/store/reducer.ts", "expected": "Has auto_naming_* and auto_summarization_* fields", "observed": "DEFAULT_CONFIG includes: auto_naming_enabled:true, auto_naming_first_trigger:5, auto_naming_repeat_interval:10, auto_summarization_enabled:true, auto_summarization_interval:300, auto_summarization_max_transcript_length:50000" },
+        { "action": "Check session_start message in frontend/src/app/AppLayout.tsx line 57", "expected": "Sends full config including auto_naming and auto_summarization fields", "observed": "handleSessionStart sends { type: 'session_start', name: state.sessionName, config: state.config } — state.config is the full SessionConfig including all auto_naming_* and auto_summarization_* fields" },
+        { "action": "Check SessionConfig type in frontend/src/store/types.ts", "expected": "SessionConfig interface has auto_naming and auto_summarization fields", "observed": "SessionConfig has: auto_naming_enabled:boolean, auto_naming_first_trigger:number, auto_naming_repeat_interval:number, auto_summarization_enabled:boolean, auto_summarization_interval:number, auto_summarization_max_transcript_length:number" },
+        { "action": "Check backend models.py SessionConfig", "expected": "Accepts auto_naming and auto_summarization fields", "observed": "Backend SessionConfig Pydantic model has: auto_naming_enabled:bool=True, auto_naming_first_trigger:int=5, auto_naming_repeat_interval:int=10, auto_summarization_enabled:bool=True, auto_summarization_interval:int=300, auto_summarization_max_transcript_length:int=50000" }
+      ],
+      "evidence": {
+        "codeReferences": [
+          "frontend/src/store/reducer.ts: DEFAULT_CONFIG lines 3-26",
+          "frontend/src/store/types.ts: SessionConfig interface lines 1-26",
+          "frontend/src/app/AppLayout.tsx: line 57 session_start message",
+          "backend/models.py: SessionConfig lines 37-42"
+        ],
+        "consoleErrors": "none",
+        "details": "Verified via code inspection: (1) SessionConfig TypeScript interface includes all 6 auto_naming/auto_summarization fields, (2) DEFAULT_CONFIG sets sensible defaults, (3) AppLayout.handleSessionStart sends the full config object in session_start WS message, (4) Backend Pydantic SessionConfig model accepts all 6 fields with matching defaults."
+      },
+      "issues": null
+    }
+  },
+  "frictions": [
+    {
+      "description": "Clicking toggle buttons via agent-browser refs sometimes triggers navigation to active session page instead of toggling the button. The scrollable content area (.overflow-y-auto) doesn't respond to agent-browser scroll command — needed JavaScript scrollTop instead.",
+      "resolved": true,
+      "resolution": "Used JavaScript document.querySelector('.overflow-y-auto').scrollTop to scroll, and JS click on the correct aria-pressed button for toggling. Used agent-browser fill command for number inputs.",
+      "affectedAssertions": ["VAL-CFG-003"]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 4 assertions: all 4 passed. Settings page correctly shows Auto-Naming controls (toggle, first trigger, repeat interval) and Auto-Summarization controls (toggle, interval, max transcript length). Settings persist to localStorage and survive page refresh. Code inspection confirms session_start WS message sends full config including all auto_naming/auto_summarization fields, and backend accepts them."
+}

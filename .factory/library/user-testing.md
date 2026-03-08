@@ -57,5 +57,23 @@
 - No login required
 - Browser session naming: use `--session "<worker_session_prefix>__<unique>"` format
 - After each test flow, close your browser session
-- Pagination: 30 sessions exist, default page size is 20, so there should be 2 pages
+- Pagination: 32 sessions exist (30 original + 2 smart-sessions test), default page size is 20, so there should be 2 pages
 - Images tab in session detail: look for images section/tab when viewing a session that has images
+
+## Flow Validator Guidance: Smart Sessions Testing
+- **Settings page**: `http://localhost:5173/settings` — has "Background AI Features" section with Auto-Naming and Auto-Summarization controls
+- **Active session page**: `http://localhost:5173/sessions/current` — has right metadata panel (SessionMetadataPanel) showing session info and summary
+- **Seeded smart-sessions data**:
+  - `sess_test_auto_named`: Auto-named session "Deep Discussion on AI Ethics" (name_source=auto), has summary text
+  - `sess_test_user_renamed`: User-renamed session "My Custom Session Name" (name_source=user), has brief summary
+- **Config fields in localStorage key `lc_config`**: auto_naming_enabled, auto_naming_first_trigger, auto_naming_repeat_interval, auto_summarization_enabled, auto_summarization_interval, auto_summarization_max_transcript_length
+- **Right panel**: Only visible on active session page (not past session detail). Has data-testid attributes: session-metadata-panel, session-name, name-source-badge, session-duration, session-theme, session-summary, summary-empty-state
+- **Responsive**: Right panel hidden below 768px viewport width (uses `hidden lg:flex` Tailwind classes)
+- **Auto-naming and auto-summarization** require a LIVE session with real audio/transcript which we cannot fully simulate in testing. The backend logic is covered by unit tests. For user testing, verify:
+  1. Settings UI exists and works (toggles, inputs, persistence)
+  2. Right panel layout exists on active session page
+  3. Past sessions show summaries when they have them
+  4. name_source column tracks correctly in DB
+  5. Sessions list shows auto-generated names
+- **WebSocket session_start message**: Frontend sends config including auto_naming_* and auto_summarization_* fields when connecting to WS. This can be verified by checking the frontend code sends these fields.
+- **Isolation**: Each subagent should use a unique browser session ID. No shared state issues since we're testing UI layout and settings persistence (read-only for sessions data).
