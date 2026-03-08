@@ -1,0 +1,35 @@
+{
+  "flowId": "image-api",
+  "testedAt": "2026-03-08T16:20:00Z",
+  "toolsUsed": ["curl", "sqlite3"],
+  "assertions": {
+    "VAL-IMG-001": {
+      "status": "pass",
+      "evidence": "6 image files exist in backend/images/ directory. 6 entries in images table. All DB filenames match disk files exactly (verified with ls + sqlite3 query comparison).",
+      "details": "Images table has entries for all 6 test images across 3 sessions. Each entry has id, session_id, filename, prompt, style, provider, created_at. Corresponding PNG files exist on disk with correct filenames."
+    },
+    "VAL-IMG-002": {
+      "status": "pass",
+      "evidence": "All 6 images served with HTTP 200 and Content-Type: image/png. Tested: img_080dd19aa7c0.png, img_22309963efe5.png, img_348b90d97511.png, img_abc47956cf9f.png, img_d3fcb804d787.png, img_d9e22de2bdf4.png",
+      "details": "GET /api/images/{filename} returns HTTP 200 with correct image/png content-type header for every image in the database."
+    },
+    "VAL-IMG-005": {
+      "status": "pass",
+      "evidence": "GET /api/sessions/sess_test_401b713cf8fd/images returns URLs: /api/images/img_22309963efe5.png, /api/images/img_abc47956cf9f.png. All URLs use /api/images/{filename} format.",
+      "details": "Image URLs in API responses use persistent absolute paths (/api/images/{filename}) format, not data URIs or temporary external URLs."
+    },
+    "VAL-IMG-006": {
+      "status": "pass",
+      "evidence": "3 sessions each have exactly 2 images: sess_test_401b713cf8fd (2), sess_test_04f9bd1afd1f (2), sess_test_1550ab2f13e2 (2). All 6 image files exist on disk and all 6 DB entries verified.",
+      "details": "Multiple images per session are correctly stored both in the database and on the filesystem. Session images API correctly returns all images for each session."
+    },
+    "VAL-IMG-007": {
+      "status": "pass",
+      "evidence": "GET /api/sessions/{id}/images tested for all 3 sessions. Each returns array of image objects with fields: id, session_id, filename, prompt, style, provider, created_at, url. All required fields (id, filename, prompt, created_at) are present.",
+      "details": "Session images API returns complete metadata for each image including id, filename, prompt, and created_at. Response also includes url field with persistent /api/images/ path."
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 image API assertions: all 5 passed. Images are correctly stored on disk with matching database entries, served via API with correct content-type, use persistent /api/images/ URLs, support multiple images per session, and return complete metadata."
+}

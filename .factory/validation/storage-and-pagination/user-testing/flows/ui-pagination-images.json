@@ -1,0 +1,45 @@
+{
+  "flowId": "ui-pagination-images",
+  "testedAt": "2026-03-08T12:00:00Z",
+  "toolsUsed": ["agent-browser", "curl"],
+  "assertions": {
+    "VAL-PAG-001": {
+      "status": "pass",
+      "evidence": "curl GET /api/sessions?offset=0&limit=20 -> 200: {sessions: [20 items], total: 30}. Sessions array has exactly 20 items (Test Session 25 through Test Session 6), total=30.",
+      "details": "API returns paginated response with correct structure. Sessions array length matches limit parameter, total reflects actual count of all sessions."
+    },
+    "VAL-PAG-002": {
+      "status": "pass",
+      "evidence": "Screenshots: /tmp/pag-002-sessions-page.png, /tmp/pag-002-pagination-controls.png. Pagination controls visible: Previous button (disabled on page 1), 'Page 1 of 2' text, Next button (enabled).",
+      "details": "SessionsPage shows pagination controls at the bottom with Previous/Next buttons and page indicator 'Page 1 of 2'. Previous is disabled on first page as expected."
+    },
+    "VAL-PAG-003": {
+      "status": "pass",
+      "evidence": "Screenshots: /tmp/pag-002-pagination-controls.png (page 1 showing Test Session 10-6), /tmp/pag-003-page2.png (page 2 showing Test Session 5-1). Clicked Next button, different sessions loaded.",
+      "details": "Page 1 showed sessions 25-6, page 2 showed sessions 5-1 plus two original sessions. Different sessions confirmed on each page. Page indicator updated to 'Page 2 of 2'. Previous became enabled, Next became disabled."
+    },
+    "VAL-PAG-004": {
+      "status": "pass",
+      "evidence": "curl GET /api/sessions (no params) -> 200: {sessions: [20 items], total: 30}. Returns identical first-page results as offset=0&limit=20.",
+      "details": "Default API call without offset/limit parameters returns first page (offset=0) with 20 sessions and total=30, matching explicit offset=0 request."
+    },
+    "VAL-PAG-005": {
+      "status": "pass",
+      "evidence": "Screenshot: /tmp/pag-005-page2-controls.png. On page 2 (10 sessions, fewer than page size 20), Next button is disabled (agent-browser 'is enabled @e29' returned false). Page indicator shows 'Page 2 of 2'.",
+      "details": "On the last page with only 10 sessions (fewer than page size of 20), the Next button is disabled and Previous is enabled. All 10 remaining sessions are displayed."
+    },
+    "VAL-IMG-003": {
+      "status": "pass",
+      "evidence": "Screenshots: /tmp/img-003-images-before-refresh.png (2 images visible - red, green), /tmp/img-003-images-after-refresh.png (same 2 images visible after page reload). Console errors: none.",
+      "details": "Navigated to session detail for sess_test_401b713cf8fd (Test Session 1), clicked Images tab showing 2 images (red, green). Refreshed page, clicked Images tab again - same 2 images still displayed. Images persist across page refresh via API-backed storage."
+    },
+    "VAL-IMG-004": {
+      "status": "pass",
+      "evidence": "Screenshot: /tmp/img-004-session2-images.png. Past session sess_test_04f9bd1afd1f (Test Session 2) shows 2 images (blue, yellow) in Images tab. Console errors: none.",
+      "details": "Navigated to session detail page for a past session (Test Session 2) that had generated images. Images tab shows '(2)' count and displays both images correctly. Images are served via /api/images/ endpoint."
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 7 assertions: all 7 passed. Pagination API returns correct paginated responses with total count. UI shows pagination controls with Previous/Next buttons and page indicator. Navigation between pages works correctly with proper button state management (disabled on boundaries). Images persist across page refresh and are visible on past session detail pages."
+}
