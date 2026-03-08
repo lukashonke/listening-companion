@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useAppContext } from '@/context/AppContext'
 
 const AGENT_INTERVALS = [10, 30, 60, 120]
@@ -39,14 +40,13 @@ const ANTHROPIC_MODELS = [
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast)' },
 ]
 
-const OPENAI_MODELS = [
-  { value: 'gpt-4o', label: 'GPT-4o' },
-  { value: 'gpt-4.1', label: 'GPT-4.1' },
-  { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini (fast)' },
-  { value: 'o4-mini', label: 'o4-mini (reasoning)' },
-  { value: 'o4-mini-high', label: 'o4-mini-high (reasoning, high effort)' },
-  { value: 'o3', label: 'o3 (reasoning)' },
-  { value: 'o3-pro', label: 'o3-pro (reasoning, powerful)' },
+// Fallback list used while loading or if the API call fails
+const OPENAI_MODELS_FALLBACK = [
+  { value: 'gpt-4o', label: 'gpt-4o' },
+  { value: 'gpt-4.1', label: 'gpt-4.1' },
+  { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini' },
+  { value: 'o4-mini', label: 'o4-mini' },
+  { value: 'o3', label: 'o3' },
 ]
 
 const GEMINI_MODELS = [
@@ -71,6 +71,23 @@ export function SettingsPage() {
   const { state, dispatchUI, sendJSON } = useAppContext()
   const { config, isRecording } = state
 
+  const [openaiModels, setOpenaiModels] = useState<{ value: string; label: string }[] | null>(null)
+  const [loadingOpenaiModels, setLoadingOpenaiModels] = useState(false)
+
+  useEffect(() => {
+    if (config.model_provider !== 'openai') return
+    setLoadingOpenaiModels(true)
+    fetch('/api/models/openai')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.models) && data.models.length > 0) {
+          setOpenaiModels(data.models.map((id: string) => ({ value: id, label: id })))
+        }
+      })
+      .catch(() => { /* fall back to hardcoded list */ })
+      .finally(() => setLoadingOpenaiModels(false))
+  }, [config.model_provider])
+
   const updateConfig = (patch: Partial<typeof config>) => {
     dispatchUI({ type: 'SET_CONFIG', payload: patch })
     if (isRecording) {
@@ -79,7 +96,7 @@ export function SettingsPage() {
   }
 
   const agentModels =
-    config.model_provider === 'openai' ? OPENAI_MODELS :
+    config.model_provider === 'openai' ? (openaiModels ?? OPENAI_MODELS_FALLBACK) :
     config.model_provider === 'google' ? GEMINI_MODELS :
     ANTHROPIC_MODELS
   const defaultAgentModel =
@@ -222,11 +239,18 @@ export function SettingsPage() {
             className="w-full px-3 py-2 rounded-md border bg-background text-sm"
             value={config.agent_model || defaultAgentModel}
             onChange={e => updateConfig({ agent_model: e.target.value })}
+            disabled={loadingOpenaiModels}
           >
-            {agentModels.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
+            {loadingOpenaiModels
+              ? <option>Loading models…</option>
+              : agentModels.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))
+            }
           </select>
+          {config.model_provider === 'openai' && openaiModels && (
+            <p className="text-xs text-muted-foreground">{openaiModels.length} models fetched from OpenAI API</p>
+          )}
         </div>
 
         {showReasoningEffort && (

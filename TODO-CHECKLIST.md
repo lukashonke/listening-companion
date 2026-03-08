@@ -121,6 +121,15 @@
   - Uses GOOGLE_API_KEY (same as R9)
   - API endpoint: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` with `responseModalities: ["TEXT", "IMAGE"]`
 
+## Round 4 Fixes
+
+- [x] **R11: Fetch OpenAI models from API instead of hardcoding**
+  - Do NOT hardcode OpenAI model names — they change frequently and the hardcoded ones are already outdated
+  - Backend: add an API endpoint (e.g., GET /api/models/openai) that calls the OpenAI List Models API (`GET https://api.openai.com/v1/models`) and returns available models filtered to chat/completion models (filter out embedding, whisper, tts, dall-e, moderation models)
+  - Frontend: when "OpenAI" is selected as model provider, fetch available models from this endpoint and populate the dropdown dynamically
+  - Cache the model list for a reasonable time (e.g., 1 hour) to avoid hitting the API on every page load
+  - Sort models by name for easy browsing
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03

@@ -1,8 +1,10 @@
 """FastAPI application — entry point."""
 import logging
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -64,6 +66,53 @@ async def ws_endpoint(ws: WebSocket) -> None:
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# OpenAI models cache
+# ---------------------------------------------------------------------------
+_openai_models_cache: list[str] | None = None
+_openai_models_cache_at: float = 0.0
+_OPENAI_MODELS_CACHE_TTL = 3600  # 1 hour
+
+_OPENAI_EXCLUDE_KEYWORDS = [
+    "embedding", "whisper", "dall-e", "moderation",
+    "audio-", "search", "similarity", "instruct",
+    "babbage", "davinci", "ada", "curie",
+]
+
+
+def _is_chat_model(model_id: str) -> bool:
+    lower = model_id.lower()
+    if lower.startswith("tts"):
+        return False
+    return not any(kw in lower for kw in _OPENAI_EXCLUDE_KEYWORDS)
+
+
+@app.get("/api/models/openai")
+async def list_openai_models():
+    global _openai_models_cache, _openai_models_cache_at
+    now = time.time()
+    if _openai_models_cache is not None and now - _openai_models_cache_at < _OPENAI_MODELS_CACHE_TTL:
+        return {"models": _openai_models_cache}
+    if not settings.openai_api_key:
+        return {"models": []}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://api.openai.com/v1/models",
+                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.error("Failed to fetch OpenAI models: %s", exc)
+        return JSONResponse({"error": "Failed to fetch models from OpenAI"}, status_code=502)
+    models = sorted(m["id"] for m in data.get("data", []) if _is_chat_model(m["id"]))
+    _openai_models_cache = models
+    _openai_models_cache_at = now
+    return {"models": models}
 
 
 @app.get("/api/sessions")
