@@ -22,6 +22,17 @@
 - [x] **U4: Support deleting sessions**
   - Fixed: Delete sessions with two-step confirmation on SessionsPage and SessionDetailPage; backend DELETE /api/sessions/{id} (also deletes associated memory)
 
+## Debug & Monitoring
+
+- [x] **D1: Add live Logs tab within the active session**
+  - Add a new "Logs" tab alongside Transcript, Agent Log, Memory, Images in the active session view
+  - Stream backend logs to the frontend in real-time via the existing WebSocket connection
+  - Backend: send log entries as a new WS event type (e.g. `{ type: "log", level: "INFO", message: "...", timestamp: "..." }`)
+  - Capture all relevant backend logs: STT connection, audio chunks received, transcript events, agent activity, TTS calls, errors
+  - Frontend: display logs in a scrollable, auto-scrolling panel with color-coded log levels (ERROR=red, WARN=yellow, INFO=normal, DEBUG=gray)
+  - Include a "Clear" button and optional auto-scroll toggle
+  - This is critical for debugging the audio pipeline — we need to see what's happening on the backend in real-time from the browser
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03

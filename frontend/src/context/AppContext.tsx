@@ -20,6 +20,7 @@ const UI_ACTION_TYPES: ReadonlySet<string> = new Set<UIAction['type']>([
   'SET_RECORDING',
   'SET_SESSION_NAME',
   'CLEAR_ERROR',
+  'CLEAR_LOGS',
   'RESET_SESSION',
   'SET_CONFIG',
 ])

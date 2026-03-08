@@ -6,6 +6,7 @@ export const initialState: AppState = {
   shortTermMemory: [],
   toolLog: [],
   images: [],
+  logs: [],
   isAgentThinking: false,
   error: null,
   isRecording: false,
@@ -49,6 +50,10 @@ const handlers: Partial<Record<WSEvent['type'], Handler>> = {
     return { ...s, error: { code: ev.code, message: ev.message, fatal: ev.fatal } }
   },
   tts_chunk: (s) => s, // handled by useTTSPlayer hook directly
+  log: (s, e) => {
+    const ev = e as Extract<WSEvent, { type: 'log' }>
+    return { ...s, logs: [...s.logs.slice(-499), { level: ev.level, message: ev.message, ts: ev.ts }] }
+  },
 }
 
 export function appReducer(state: AppState, event: WSEvent): AppState {
@@ -61,6 +66,7 @@ export type UIAction =
   | { type: 'SET_RECORDING'; payload: boolean }
   | { type: 'SET_SESSION_NAME'; payload: string }
   | { type: 'CLEAR_ERROR' }
+  | { type: 'CLEAR_LOGS' }
   | { type: 'RESET_SESSION' }
   | { type: 'SET_CONFIG'; payload: Partial<SessionConfig> }
 
@@ -72,6 +78,8 @@ export function uiReducer(state: AppState, action: UIAction): AppState {
       return { ...state, sessionName: action.payload }
     case 'CLEAR_ERROR':
       return { ...state, error: null }
+    case 'CLEAR_LOGS':
+      return { ...state, logs: [] }
     case 'RESET_SESSION':
       return { ...initialState, sessionName: state.sessionName }
     case 'SET_CONFIG':

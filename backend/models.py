@@ -115,6 +115,13 @@ class WsSessionStatus(BaseModel):
     state: Literal["listening", "processing", "idle"]
 
 
+class WsLog(BaseModel):
+    type: Literal["log"] = "log"
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    message: str
+    ts: float = Field(default_factory=now)
+
+
 # ── Client → Server frames ────────────────────────────────────────────────────
 
 class WsSessionStart(BaseModel):

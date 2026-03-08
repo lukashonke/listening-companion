@@ -22,6 +22,7 @@ from models import (
     WsTtsChunk,
     WsError,
     WsSessionStatus,
+    WsLog,
 )
 from memory.short_term import ShortTermMemory
 from memory.long_term import LongTermMemory
@@ -33,6 +34,26 @@ from tools.image_tool import build_image_tool
 from tools import get_plugin_tools
 
 logger = logging.getLogger(__name__)
+
+
+class WebSocketLogHandler(logging.Handler):
+    """Forwards log records to the active WebSocket session as WsLog events."""
+
+    def __init__(self, session: "ActiveSession") -> None:
+        super().__init__()
+        self._session = session
+        self._loop = asyncio.get_event_loop()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            level = record.levelname  # DEBUG / INFO / WARNING / ERROR / CRITICAL
+            event = WsLog(level=level, message=msg)  # type: ignore[arg-type]
+            asyncio.run_coroutine_threadsafe(
+                self._session._emit(event), self._loop
+            )
+        except Exception:
+            self.handleError(record)
 
 
 class ActiveSession:
@@ -49,9 +70,15 @@ class ActiveSession:
         self._long_term: LongTermMemory | None = None
         self._stt: ScribeSTT | None = None
         self._agent: SessionAgent | None = None
+        self._log_handler: WebSocketLogHandler | None = None
 
     async def setup(self) -> None:
         """Initialize all session components."""
+        # Attach WS log handler so all backend logs stream to the browser
+        self._log_handler = WebSocketLogHandler(self)
+        self._log_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+        logging.getLogger().addHandler(self._log_handler)
+
         self._db = await get_db()
 
         # Persist session row
@@ -105,6 +132,9 @@ class ActiveSession:
 
     async def teardown(self) -> None:
         """Gracefully shut down all session components."""
+        if self._log_handler:
+            logging.getLogger().removeHandler(self._log_handler)
+            self._log_handler = None
         if self._agent:
             await self._agent.stop_loop()
         if self._stt:

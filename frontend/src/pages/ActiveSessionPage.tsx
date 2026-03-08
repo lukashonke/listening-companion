@@ -2,8 +2,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TranscriptTab } from '@/tabs/TranscriptTab'
 import { AgentLogTab } from '@/tabs/AgentLogTab'
 import { MemoryTab } from '@/tabs/MemoryTab'
+import { LogsTab } from '@/tabs/LogsTab'
 import { useAppContext } from '@/context/AppContext'
-import { FileText, Wrench, Brain, ImageIcon, ArrowLeft } from 'lucide-react'
+import { FileText, Wrench, Brain, ImageIcon, ArrowLeft, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { SessionImagesTab } from '@/tabs/SessionImagesTab'
@@ -65,6 +66,16 @@ export function ActiveSessionPage() {
               <span className="text-xs text-muted-foreground ml-1">({state.images.length})</span>
             )}
           </TabsTrigger>
+          <TabsTrigger
+            value="logs"
+            className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-10"
+          >
+            <Terminal className="h-3.5 w-3.5" />
+            Logs
+            {state.logs.length > 0 && (
+              <span className="text-xs text-muted-foreground ml-1">({state.logs.length})</span>
+            )}
+          </TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="transcript" className="flex-1 mt-0 overflow-hidden data-[state=inactive]:hidden">
@@ -78,6 +89,9 @@ export function ActiveSessionPage() {
       </TabsContent>
       <TabsContent value="images" className="flex-1 mt-0 overflow-hidden data-[state=inactive]:hidden">
         <SessionImagesTab />
+      </TabsContent>
+      <TabsContent value="logs" className="flex-1 mt-0 overflow-hidden data-[state=inactive]:hidden">
+        <LogsTab />
       </TabsContent>
     </Tabs>
   )

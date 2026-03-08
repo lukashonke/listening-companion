@@ -44,12 +44,21 @@ export interface AppError {
   fatal: boolean
 }
 
+export type LogLevel = 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
+
+export interface LogEntry {
+  level: LogLevel
+  message: string
+  ts: number
+}
+
 export interface AppState {
   sessionStatus: SessionStatus
   transcript: TranscriptChunk[]
   shortTermMemory: MemoryEntry[]
   toolLog: ToolEvent[]
   images: GeneratedImage[]
+  logs: LogEntry[]
   isAgentThinking: boolean
   error: AppError | null
   isRecording: boolean
@@ -68,3 +77,4 @@ export type WSEvent =
   | { type: 'session_status'; state: SessionStatus }
   | { type: 'tts_chunk'; audio_b64: string; text: string }
   | { type: 'error'; code: string; message: string; fatal: boolean }
+  | { type: 'log'; level: LogLevel; message: string; ts: number }
