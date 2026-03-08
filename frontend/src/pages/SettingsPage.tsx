@@ -32,11 +32,33 @@ const TTS_MODELS = [
   { value: 'eleven_flash_v2_5', label: 'Eleven Flash v2.5 (fastest)' },
 ]
 
-const AGENT_MODELS = [
+const ANTHROPIC_MODELS = [
   { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (default)' },
   { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast)' },
 ]
+
+const OPENAI_MODELS = [
+  { value: 'gpt-4o', label: 'GPT-4o' },
+  { value: 'gpt-4.1', label: 'GPT-4.1' },
+  { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini (fast)' },
+  { value: 'o4-mini', label: 'o4-mini (reasoning)' },
+  { value: 'o4-mini-high', label: 'o4-mini-high (reasoning, high effort)' },
+  { value: 'o3', label: 'o3 (reasoning)' },
+  { value: 'o3-pro', label: 'o3-pro (reasoning, powerful)' },
+]
+
+const REASONING_EFFORTS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium (default)' },
+  { value: 'high', label: 'High' },
+]
+
+const OPENAI_REASONING_MODELS = new Set(['o1', 'o3', 'o4-mini', 'o4-mini-high', 'o3-pro'])
+
+function isReasoningModel(model: string) {
+  return OPENAI_REASONING_MODELS.has(model) || model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4')
+}
 
 export function SettingsPage() {
   const { state, dispatchUI, sendJSON } = useAppContext()
@@ -49,9 +71,30 @@ export function SettingsPage() {
     }
   }
 
+  const agentModels = config.model_provider === 'openai' ? OPENAI_MODELS : ANTHROPIC_MODELS
+  const defaultAgentModel = config.model_provider === 'openai' ? 'gpt-4o' : 'claude-sonnet-4-6'
+  const showReasoningEffort = config.model_provider === 'openai' && isReasoningModel(config.agent_model)
+
   return (
+    <div className="h-full overflow-y-auto">
     <div className="p-6 max-w-lg space-y-8">
       <h1 className="text-xl font-semibold">Settings</h1>
+
+      {/* Session */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Session</h2>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Session Theme / Context</label>
+          <input
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+            value={config.theme}
+            onChange={e => updateConfig({ theme: e.target.value })}
+            placeholder="e.g. Meeting, D&D Session, Lecture, Interview…"
+          />
+          <p className="text-xs text-muted-foreground">Helps the agent adapt its behavior (track action items in meetings, initiative in D&D, etc.)</p>
+        </div>
+      </section>
 
       {/* Audio */}
       <section className="space-y-4">
@@ -144,17 +187,45 @@ export function SettingsPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Agent</h2>
 
         <div className="space-y-1.5">
+          <label className="text-sm font-medium">Model Provider</label>
+          <select
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+            value={config.model_provider}
+            onChange={e => updateConfig({ model_provider: e.target.value, agent_model: e.target.value === 'openai' ? 'gpt-4o' : 'claude-sonnet-4-6' })}
+          >
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
+
+        <div className="space-y-1.5">
           <label className="text-sm font-medium">Agent Model</label>
           <select
             className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-            value={config.agent_model}
+            value={config.agent_model || defaultAgentModel}
             onChange={e => updateConfig({ agent_model: e.target.value })}
           >
-            {AGENT_MODELS.map(m => (
+            {agentModels.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
         </div>
+
+        {showReasoningEffort && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Reasoning Effort</label>
+            <select
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              value={config.reasoning_effort}
+              onChange={e => updateConfig({ reasoning_effort: e.target.value })}
+            >
+              {REASONING_EFFORTS.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">Higher effort produces better results but uses more tokens and is slower</p>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Agent Interval</label>
@@ -168,6 +239,18 @@ export function SettingsPage() {
             ))}
           </select>
           <p className="text-xs text-muted-foreground">How often the AI agent reviews the transcript</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Custom System Prompt</label>
+          <textarea
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm resize-none"
+            rows={4}
+            value={config.custom_system_prompt}
+            onChange={e => updateConfig({ custom_system_prompt: e.target.value })}
+            placeholder="Additional instructions appended to the agent's system prompt…"
+          />
+          <p className="text-xs text-muted-foreground">Appended to the built-in prompt. Leave blank to use defaults.</p>
         </div>
       </section>
 
@@ -194,6 +277,7 @@ export function SettingsPage() {
           Changes are applied live to the current session.
         </p>
       )}
+    </div>
     </div>
   )
 }

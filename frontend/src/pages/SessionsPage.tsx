@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Mic, Trash2 } from 'lucide-react'
+import { Plus, Mic, Trash2, RotateCcw } from 'lucide-react'
 import { useAppContext } from '@/context/AppContext'
 import { apiFetch } from '@/lib/auth'
 
@@ -11,11 +11,21 @@ interface ApiSession {
   name: string;
   created_at: number;
   ended_at: number | null;
+  config?: string;
+}
+
+function getThemeFromConfig(config?: string): string {
+  if (!config) return ''
+  try {
+    return JSON.parse(config).theme || ''
+  } catch {
+    return ''
+  }
 }
 
 export function SessionsPage() {
   const navigate = useNavigate()
-  const { state } = useAppContext()
+  const { state, dispatchUI } = useAppContext()
   const [historySessions, setHistorySessions] = useState<ApiSession[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
 
@@ -47,6 +57,13 @@ export function SessionsPage() {
       setConfirmDeleteId(null)
     }
   }, [confirmDeleteId])
+
+  const handleResume = useCallback((e: React.MouseEvent, session: ApiSession) => {
+    e.stopPropagation()
+    dispatchUI({ type: 'SET_RESUME_SESSION_ID', payload: session.id })
+    dispatchUI({ type: 'SET_SESSION_NAME', payload: session.name || session.id })
+    navigate('/sessions/current')
+  }, [dispatchUI, navigate])
 
   const hasActivity = state.transcript.length > 0 || state.toolLog.length > 0
 
@@ -112,6 +129,7 @@ export function SessionsPage() {
                 : null
               const isPendingDelete = confirmDeleteId === session.id
               const isCurrentlyDeleting = deletingId === session.id
+              const theme = getThemeFromConfig(session.config)
               return (
                 <Card
                   key={session.id}
@@ -127,6 +145,7 @@ export function SessionsPage() {
                       <p className="text-xs text-muted-foreground">
                         {new Date(session.created_at * 1000).toLocaleString()}
                         {duration != null && <span> &middot; {duration} min</span>}
+                        {theme && <span> &middot; {theme}</span>}
                       </p>
                     </div>
                     {isPendingDelete ? (
@@ -151,15 +170,27 @@ export function SessionsPage() {
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        onClick={(e) => handleDelete(e, session.id)}
-                        aria-label="Delete session"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => handleResume(e, session)}
+                          aria-label="Resume session"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                          Resume
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => handleDelete(e, session.id)}
+                          aria-label="Delete session"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

@@ -17,8 +17,8 @@ async def synthesize_tts_chunks(
     on_chunk: Callable[[str, str], Awaitable[None]],
 ) -> None:
     """
-    Stream TTS audio from ElevenLabs EU endpoint.
-    Calls on_chunk(audio_b64, text) for each audio chunk received.
+    Fetch TTS audio from ElevenLabs EU endpoint and emit a single on_chunk call
+    with the complete MP3 once fully downloaded.
     """
     url = f"{settings.elevenlabs_eu_endpoint}/v1/text-to-speech/{voice_id}/stream"
     headers = {
@@ -35,18 +35,14 @@ async def synthesize_tts_chunks(
         async with httpx.AsyncClient(timeout=60) as client:
             async with client.stream("POST", url, headers=headers, json=payload) as resp:
                 resp.raise_for_status()
-                first = True
-                buffer = b""
+                # Accumulate the full MP3 before sending — partial MP3 chunks
+                # cannot be decoded independently by the browser's WebAudio API.
+                audio_bytes = b""
                 async for raw_chunk in resp.aiter_bytes(chunk_size=4096):
-                    buffer += raw_chunk
-                    if len(buffer) >= 4096:
-                        audio_b64 = base64.b64encode(buffer).decode()
-                        await on_chunk(audio_b64, text if first else "")
-                        buffer = b""
-                        first = False
-                if buffer:
-                    audio_b64 = base64.b64encode(buffer).decode()
-                    await on_chunk(audio_b64, text if first else "")
+                    audio_bytes += raw_chunk
+                if audio_bytes:
+                    audio_b64 = base64.b64encode(audio_bytes).decode()
+                    await on_chunk(audio_b64, text)
     except Exception as exc:
         logger.error("TTS synthesis failed: %s", exc)
         raise

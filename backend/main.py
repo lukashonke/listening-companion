@@ -70,7 +70,7 @@ async def health():
 async def list_sessions():
     db = await get_db()
     async with db.execute(
-        "SELECT id, name, created_at, ended_at FROM sessions ORDER BY created_at DESC LIMIT 50"
+        "SELECT id, name, created_at, ended_at, config FROM sessions ORDER BY created_at DESC LIMIT 50"
     ) as cursor:
         rows = await cursor.fetchall()
     return [dict(r) for r in rows]

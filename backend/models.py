@@ -21,6 +21,14 @@ class SessionConfig(BaseModel):
     agent_interval_s: int = 30
     image_provider: str = "placeholder"
     speaker_diarization: bool = False
+    # R5: custom system prompt appended to the built-in prompt
+    custom_system_prompt: str = ""
+    # R6: session theme passed to agent for context-aware behavior
+    theme: str = ""
+    # R8: model provider and model selection
+    model_provider: str = "anthropic"  # "anthropic" or "openai"
+    agent_model: str = ""  # empty = use server default
+    reasoning_effort: str = "medium"  # for OpenAI o-series reasoning models
 
 
 class Session(BaseModel):

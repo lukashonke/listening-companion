@@ -54,8 +54,14 @@ export function AppLayout() {
   }, [dispatchUI, sendJSON])
 
   const handleSessionStart = useCallback(() => {
-    sendJSON({ type: 'session_start', name: state.sessionName, config: state.config })
-  }, [sendJSON, state.config, state.sessionName])
+    const payload: Record<string, unknown> = { type: 'session_start', name: state.sessionName, config: state.config }
+    if (state.resumeSessionId) {
+      payload.session_id = state.resumeSessionId
+      // Clear resume ID after use so next start creates a fresh session
+      dispatchUI({ type: 'SET_RESUME_SESSION_ID', payload: null })
+    }
+    sendJSON(payload)
+  }, [sendJSON, state.config, state.sessionName, state.resumeSessionId, dispatchUI])
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

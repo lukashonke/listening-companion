@@ -10,6 +10,10 @@ const DEFAULT_CONFIG: SessionConfig = {
   stt_language: 'en',
   tts_model: 'eleven_v3',
   agent_model: 'claude-sonnet-4-6',
+  custom_system_prompt: '',
+  theme: '',
+  model_provider: 'anthropic',
+  reasoning_effort: 'medium',
 }
 
 export const initialState: AppState = {
@@ -24,6 +28,7 @@ export const initialState: AppState = {
   isRecording: false,
   sessionName: 'New Session',
   config: DEFAULT_CONFIG,
+  resumeSessionId: null,
 }
 
 export { DEFAULT_CONFIG }
@@ -60,7 +65,7 @@ const handlers: Partial<Record<WSEvent['type'], Handler>> = {
   tts_chunk: (s) => s, // handled by useTTSPlayer hook directly
   log: (s, e) => {
     const ev = e as Extract<WSEvent, { type: 'log' }>
-    return { ...s, logs: [...s.logs.slice(-499), { level: ev.level, message: ev.message, ts: ev.ts }] }
+    return { ...s, logs: [...s.logs.slice(-999), { level: ev.level, message: ev.message, ts: ev.ts }] }
   },
 }
 
@@ -77,6 +82,7 @@ export type UIAction =
   | { type: 'CLEAR_LOGS' }
   | { type: 'RESET_SESSION' }
   | { type: 'SET_CONFIG'; payload: Partial<SessionConfig> }
+  | { type: 'SET_RESUME_SESSION_ID'; payload: string | null }
 
 export function uiReducer(state: AppState, action: UIAction): AppState {
   switch (action.type) {
@@ -89,9 +95,11 @@ export function uiReducer(state: AppState, action: UIAction): AppState {
     case 'CLEAR_LOGS':
       return { ...state, logs: [] }
     case 'RESET_SESSION':
-      return { ...initialState, config: state.config, sessionName: state.sessionName }
+      return { ...initialState, config: state.config, sessionName: state.sessionName, resumeSessionId: null }
     case 'SET_CONFIG':
       return { ...state, config: { ...state.config, ...action.payload } }
+    case 'SET_RESUME_SESSION_ID':
+      return { ...state, resumeSessionId: action.payload }
     default:
       return state
   }

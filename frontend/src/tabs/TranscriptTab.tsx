@@ -41,6 +41,15 @@ export function TranscriptTab() {
             <p className="text-sm text-foreground leading-relaxed">{chunk.text}</p>
           </div>
         ))}
+        {state.isRecording && (
+          <div className="flex gap-3 items-center py-1">
+            <span className="shrink-0 w-16" />
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              Listening\u2026
+            </span>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
     </div>

@@ -10,6 +10,13 @@ export interface SessionConfig {
   stt_language: string;
   tts_model: string;
   agent_model: string;
+  // R5
+  custom_system_prompt: string;
+  // R6
+  theme: string;
+  // R8
+  model_provider: string;
+  reasoning_effort: string;
 }
 
 export interface TranscriptChunk {
@@ -68,6 +75,7 @@ export interface AppState {
   isRecording: boolean
   sessionName: string
   config: SessionConfig
+  resumeSessionId: string | null
 }
 
 // All WebSocket event types (server → client)

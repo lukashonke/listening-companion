@@ -66,6 +66,53 @@
   - Load persisted config from localStorage on app start. Merge with defaults for any missing keys.
   - When config changes, save to localStorage immediately.
 
+## Round 3 Fixes
+
+- [x] **R1: Resume past sessions**
+  - Allow continuing a past session from the Sessions list (reload transcript + memory from DB, reconnect STT)
+  - Add a "Resume" button on past session cards
+  - Backend: load session data from SQLite, re-initialize ActiveSession with existing transcript/memory
+
+- [x] **R2: Cap frontend logs at 1000 entries**
+  - Currently capped at 500 in LogsTab. Increase to 1000 but ensure we trim oldest entries to prevent memory overflow.
+
+- [x] **R3: Active listening indicator in Transcript tab**
+  - When recording is active, show a pulsing indicator or animated text (e.g., "🎤 Listening..." with a pulse animation) in the transcript view
+  - Should be clearly distinct from the static "Start recording to see the transcript" message
+
+- [x] **R4: TTS playback cuts off after ~0.2s**
+  - Root cause: backend sent partial MP3 chunks; each was decoded as a complete audio file but only played ~0.2s
+  - Fix: accumulate full MP3 bytes before emitting one on_chunk event in tts.py
+
+- [x] **R5: Add system prompt setting to Settings page**
+  - Add a textarea in Settings for custom system prompt
+  - Persist to localStorage with other config
+  - Send to backend via session_start config
+  - Backend: custom_system_prompt appended to SYSTEM_PROMPT_TEMPLATE in agent.py
+
+- [x] **R6: Session metadata — Name and Theme/Context**
+  - Add "Session Theme" or "Context" field (e.g., "Meeting", "D&D Session", "Lecture", "Interview", "Brainstorming")
+  - Persist theme in session config (stored as part of config JSON in DB)
+  - Show theme on session cards in the list
+  - Pass theme to the agent system prompt so it adapts its behavior
+
+- [x] **R7: Settings page not scrollable**
+  - Fixed: added overflow-y-auto wrapper to SettingsPage
+
+- [x] **R8: OpenAI model support**
+  - Add support for OpenAI models alongside Anthropic in the agent
+  - Backend: model_provider + agent_model + reasoning_effort in SessionConfig; pydantic-ai OpenAI integration
+  - Support: gpt-4o, gpt-4.1, gpt-4.1-mini, o3, o4-mini, o4-mini-high, o3-pro
+  - Settings page: model provider dropdown, model selector, reasoning effort (o-series only)
+
+- [ ] **R9: Add Gemini model support**
+  - Add Google Gemini models alongside Anthropic and OpenAI in the agent
+  - Backend: use pydantic-ai's Google/Gemini model integration
+  - Support latest Gemini models: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash
+  - Settings page: add "Google Gemini" to model provider dropdown
+  - Needs GOOGLE_API_KEY env var (or GEMINI_API_KEY) — add to config.py as optional
+  - Add to Railway env vars when key is available
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03

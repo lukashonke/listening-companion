@@ -33,7 +33,7 @@ You have tools to:
 - Don't repeat actions you have already taken in this session
 - If nothing meaningful happened, do nothing — it is fine to call no tools
 - Reference memory entries by their ID when updating or removing them
-"""
+{theme_section}{custom_prompt_section}"""
 
 
 class SessionAgent:
@@ -61,13 +61,25 @@ class SessionAgent:
 
     def _build_agent(self):
         from pydantic_ai import Agent
-        from pydantic_ai.models.anthropic import AnthropicModel
-        from pydantic_ai.providers.anthropic import AnthropicProvider
 
-        model = AnthropicModel(
-            settings.claude_model,
-            provider=AnthropicProvider(api_key=settings.anthropic_api_key),
-        )
+        provider = self._config.model_provider or "anthropic"
+
+        if provider == "openai":
+            from pydantic_ai.models.openai import OpenAIModel
+            from pydantic_ai.providers.openai import OpenAIProvider
+            model_name = self._config.agent_model or "gpt-4o"
+            model = OpenAIModel(
+                model_name,
+                provider=OpenAIProvider(api_key=settings.openai_api_key),
+            )
+        else:
+            from pydantic_ai.models.anthropic import AnthropicModel
+            from pydantic_ai.providers.anthropic import AnthropicProvider
+            model_name = self._config.agent_model or settings.claude_model
+            model = AnthropicModel(
+                model_name,
+                provider=AnthropicProvider(api_key=settings.anthropic_api_key),
+            )
 
         wrapped = [self._wrap_tool(t) for t in self._tools]
 
@@ -76,11 +88,20 @@ class SessionAgent:
         # Use the @agent.system_prompt decorator so it is evaluated dynamically
         # on each run, reflecting the current short-term memory state.
         get_context = self._get_short_term_context
+        config = self._config
 
         @agent.system_prompt
         def dynamic_system_prompt() -> str:
+            theme_section = ""
+            if config.theme:
+                theme_section = f"\n## Session context\nThis session is: {config.theme}\nAdapt your behavior accordingly (e.g., track initiative in D&D, track action items in meetings).\n"
+            custom_prompt_section = ""
+            if config.custom_system_prompt:
+                custom_prompt_section = f"\n## Additional instructions\n{config.custom_system_prompt}\n"
             return SYSTEM_PROMPT_TEMPLATE.format(
-                short_term_memory=get_context()
+                short_term_memory=get_context(),
+                theme_section=theme_section,
+                custom_prompt_section=custom_prompt_section,
             )
 
         return agent
@@ -184,7 +205,16 @@ class SessionAgent:
         await self._emit_agent_start()
         try:
             async with asyncio.timeout(settings.agent_timeout_s):
-                await self._agent.run(user_prompt)
+                model_settings = None
+                # Pass reasoning_effort for OpenAI o-series reasoning models
+                if self._config.model_provider == "openai":
+                    model_name = self._config.agent_model or ""
+                    if any(model_name.startswith(p) for p in ("o1", "o3", "o4")):
+                        from pydantic_ai.models.openai import OpenAIModelSettings
+                        model_settings = OpenAIModelSettings(
+                            reasoning_effort=self._config.reasoning_effort or "medium"
+                        )
+                await self._agent.run(user_prompt, model_settings=model_settings)
         except asyncio.TimeoutError:
             logger.warning("Agent timed out after %ds", settings.agent_timeout_s)
         except Exception as exc:

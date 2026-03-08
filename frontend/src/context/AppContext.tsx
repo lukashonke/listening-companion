@@ -36,6 +36,7 @@ const UI_ACTION_TYPES: ReadonlySet<string> = new Set<UIAction['type']>([
   'CLEAR_LOGS',
   'RESET_SESSION',
   'SET_CONFIG',
+  'SET_RESUME_SESSION_ID',
 ])
 
 function combinedReducer(state: AppState, action: AnyAction): AppState {

@@ -59,11 +59,12 @@ class WebSocketLogHandler(logging.Handler):
 class ActiveSession:
     """One active listening session, tied to a single WebSocket connection."""
 
-    def __init__(self, ws: WebSocket, config: SessionConfig, name: str = ""):
-        self.id = f"sess_{uuid.uuid4().hex[:12]}"
+    def __init__(self, ws: WebSocket, config: SessionConfig, name: str = "", resume_session_id: str | None = None):
+        self.id = resume_session_id if resume_session_id else f"sess_{uuid.uuid4().hex[:12]}"
         self.ws = ws
         self.config = config
         self.name = name
+        self._resume = resume_session_id is not None
         self.transcript: list[TranscriptChunk] = []
         self._db = None
         self._short_term: ShortTermMemory | None = None
@@ -81,11 +82,19 @@ class ActiveSession:
 
         self._db = await get_db()
 
-        # Persist session row
-        await self._db.execute(
-            "INSERT OR IGNORE INTO sessions (id, name, created_at, config) VALUES (?, ?, ?, ?)",
-            (self.id, self.name, time.time(), self.config.model_dump_json()),
-        )
+        if self._resume:
+            # Re-open existing session: clear ended_at and update name/config
+            await self._db.execute(
+                "UPDATE sessions SET ended_at = NULL, name = ?, config = ? WHERE id = ?",
+                (self.name, self.config.model_dump_json(), self.id),
+            )
+            logger.info("Resuming session %s", self.id)
+        else:
+            # Persist new session row
+            await self._db.execute(
+                "INSERT OR IGNORE INTO sessions (id, name, created_at, config) VALUES (?, ?, ?, ?)",
+                (self.id, self.name, time.time(), self.config.model_dump_json()),
+            )
         await self._db.commit()
 
         # Memory
@@ -128,6 +137,9 @@ class ActiveSession:
         )
 
         await self._emit(WsSessionStatus(state="listening"))
+        # If resuming, push existing memory to the frontend immediately
+        if self._resume and self._short_term:
+            await self._emit_memory_update()
         logger.info("Session %s started (tools: %s)", self.id, self.config.tools)
 
     async def teardown(self) -> None:
@@ -248,8 +260,10 @@ async def websocket_handler(ws: WebSocket) -> None:
                     await session.teardown()
                 config = SessionConfig(**data.get("config", {}))
                 name = str(data.get("name", "")).strip()
-                session = ActiveSession(ws, config, name=name)
-                logger.info("session_start received (new session will be: %s)", session.id)
+                resume_id = str(data.get("session_id", "")).strip() or None
+                session = ActiveSession(ws, config, name=name, resume_session_id=resume_id)
+                action = "resume" if resume_id else "new session"
+                logger.info("session_start received (%s will be: %s)", action, session.id)
                 try:
                     await session.setup()
                 except Exception as exc:
