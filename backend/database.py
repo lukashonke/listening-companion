@@ -34,6 +34,17 @@ CREATE TABLE IF NOT EXISTS long_term_memory (
     created_at  REAL NOT NULL,
     FOREIGN KEY (session_id) REFERENCES sessions(id)
 );
+
+CREATE TABLE IF NOT EXISTS images (
+    id          TEXT PRIMARY KEY,
+    session_id  TEXT NOT NULL,
+    filename    TEXT NOT NULL,
+    prompt      TEXT NOT NULL DEFAULT '',
+    style       TEXT NOT NULL DEFAULT '',
+    provider    TEXT NOT NULL DEFAULT '',
+    created_at  REAL NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(id)
+);
 """
 
 

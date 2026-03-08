@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     await get_db()
     logger.info("Database ready")
+    # Ensure image storage directory exists
+    img_dir = Path(settings.image_storage_path)
+    img_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Image storage directory: %s", img_dir.resolve())
     yield
     await close_db()
     logger.info("Shutdown complete")
@@ -291,6 +295,29 @@ async def rename_session(session_id: str, body: RenameSessionRequest):
     return {"id": session_id, "name": body.name.strip()}
 
 
+@app.get("/api/sessions/{session_id}/images")
+async def list_session_images(session_id: str):
+    """Return image metadata for a given session."""
+    db = await get_db()
+    async with db.execute(
+        "SELECT id, session_id, filename, prompt, style, provider, created_at "
+        "FROM images WHERE session_id = ? ORDER BY created_at ASC",
+        (session_id,),
+    ) as cursor:
+        rows = await cursor.fetchall()
+    result = []
+    for r in rows:
+        row_dict = dict(r)
+        # Build URL: use filename for local files, or empty for placeholder
+        filename = row_dict.get("filename", "")
+        if filename:
+            row_dict["url"] = f"/api/images/{filename}"
+        else:
+            row_dict["url"] = ""
+        result.append(row_dict)
+    return result
+
+
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str):
     db = await get_db()
@@ -298,11 +325,35 @@ async def delete_session(session_id: str):
         row = await cursor.fetchone()
     if row is None:
         return JSONResponse({"error": "Session not found"}, status_code=404)
+    await db.execute("DELETE FROM images WHERE session_id = ?", (session_id,))
     await db.execute("DELETE FROM short_term_memory WHERE session_id = ?", (session_id,))
     await db.execute("DELETE FROM long_term_memory WHERE session_id = ?", (session_id,))
     await db.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
     await db.commit()
     return {"deleted": session_id}
+
+
+# ---------------------------------------------------------------------------
+# Serve stored images
+# ---------------------------------------------------------------------------
+import mimetypes
+
+
+@app.get("/api/images/{filename:path}")
+async def serve_image(filename: str):
+    """Serve a stored image file from IMAGE_STORAGE_PATH."""
+    storage_dir = Path(settings.image_storage_path).resolve()
+    file_path = (storage_dir / filename).resolve()
+
+    # Security: prevent path traversal
+    if not file_path.is_relative_to(storage_dir):
+        return JSONResponse({"error": "Invalid path"}, status_code=400)
+
+    if not file_path.is_file():
+        return JSONResponse({"error": "Image not found"}, status_code=404)
+
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(str(file_path), media_type=content_type or "application/octet-stream")
 
 
 # Serve frontend static files (production mode)

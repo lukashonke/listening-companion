@@ -27,6 +27,9 @@ COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 ENV FRONTEND_DIST=/app/frontend/dist
 ENV DATABASE_PATH=/data/listening_companion.db
+ENV IMAGE_STORAGE_PATH=/data/images
+
+RUN mkdir -p /data/images
 
 EXPOSE 8000
 

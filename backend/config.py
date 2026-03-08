@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # Database
     database_path: str = "listening_companion.db"
 
+    # Image storage
+    image_storage_path: str = "images"
+
     # Server
     host: str = "0.0.0.0"
     port: int = 8000

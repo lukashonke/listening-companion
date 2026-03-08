@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ArrowLeft, Brain, FileText, Pencil, Check, X, Trash2 } from 'lucide-react'
+import { ArrowLeft, Brain, FileText, ImageIcon, Pencil, Check, X, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/auth'
 
 interface MemoryEntry {
@@ -14,6 +14,17 @@ interface MemoryEntry {
   tags: string[]
   created_at: number
   updated_at: number
+}
+
+interface SessionImage {
+  id: string
+  session_id: string
+  filename: string
+  prompt: string
+  style: string
+  provider: string
+  created_at: number
+  url: string
 }
 
 interface SessionDetail {
@@ -36,6 +47,7 @@ export function SessionDetailPage() {
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [images, setImages] = useState<SessionImage[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -47,6 +59,15 @@ export function SessionDetailPage() {
       .then((data: SessionDetail) => setSession(data))
       .catch(err => setError(String(err)))
       .finally(() => setLoading(false))
+
+    // Fetch session images
+    apiFetch(`/api/sessions/${id}/images`)
+      .then(r => {
+        if (!r.ok) return []
+        return r.json()
+      })
+      .then((data: SessionImage[]) => setImages(data))
+      .catch(() => {})
   }, [id])
 
   const startRename = useCallback(() => {
@@ -202,6 +223,16 @@ export function SessionDetailPage() {
               )}
             </TabsTrigger>
             <TabsTrigger
+              value="images"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-10"
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+              Images
+              {images.length > 0 && (
+                <span className="text-xs text-muted-foreground ml-1">({images.length})</span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
               value="info"
               className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-10"
             >
@@ -235,6 +266,39 @@ export function SessionDetailPage() {
                       )}
                     </CardContent>
                   </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </TabsContent>
+
+        <TabsContent value="images" className="flex-1 mt-0 overflow-hidden data-[state=inactive]:hidden">
+          {images.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <ImageIcon className="h-8 w-8 opacity-30" />
+              <span className="text-sm">No images for this session</span>
+            </div>
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="p-4 grid gap-4 max-w-5xl mx-auto sm:grid-cols-2 lg:grid-cols-3">
+                {images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="group relative rounded-lg overflow-hidden border border-border/70 bg-card aspect-square"
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.prompt}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                      <p className="text-xs text-white/90 leading-relaxed line-clamp-3">{img.prompt}</p>
+                      <p className="text-xs text-white/50 mt-1">
+                        {new Date(img.created_at * 1000).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </ScrollArea>
