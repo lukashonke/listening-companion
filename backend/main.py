@@ -77,8 +77,9 @@ _OPENAI_MODELS_CACHE_TTL = 3600  # 1 hour
 
 _OPENAI_EXCLUDE_KEYWORDS = [
     "embedding", "whisper", "dall-e", "moderation",
-    "audio-", "search", "similarity", "instruct",
+    "audio", "search", "similarity", "instruct",
     "babbage", "davinci", "ada", "curie",
+    "realtime", "transcribe", "image", "codex", "tts",
 ]
 
 
@@ -124,7 +125,7 @@ _GEMINI_MODELS_CACHE_TTL = 3600  # 1 hour
 
 _GEMINI_EXCLUDE_KEYWORDS = [
     "embedding", "imagen", "veo", "gemma", "aqa", "robotics", "tts", "audio",
-    "text-embedding", "image-generation",
+    "text-embedding", "image-generation", "image", "computer-use", "customtools",
 ]
 
 _GEMINI_INCLUDE_PREFIX = "gemini-"
