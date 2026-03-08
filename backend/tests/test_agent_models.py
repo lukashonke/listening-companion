@@ -165,7 +165,172 @@ def test_build_agent_with_no_tools():
 
 
 # ---------------------------------------------------------------------------
-# System prompt rendering
+# Agent construction via monkeypatch on settings
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provider,model_name", [
+    ("openai", "gpt-4o"),
+    ("google", "gemini-2.5-flash"),
+    ("anthropic", "claude-haiku-4-5-20251001"),
+])
+def test_build_agent_monkeypatch_providers(provider, model_name, monkeypatch):
+    """_build_agent() succeeds for each provider when API keys are set via monkeypatch."""
+    import config as cfg
+    from pydantic_ai import Agent
+
+    monkeypatch.setattr(cfg.settings, "openai_api_key", "test-openai-key")
+    monkeypatch.setattr(cfg.settings, "google_api_key", "test-google-key")
+    monkeypatch.setattr(cfg.settings, "anthropic_api_key", "test-anthropic-key")
+
+    from agent import SessionAgent
+
+    config = SessionConfig(model_provider=provider, agent_model=model_name)
+    sa = SessionAgent(
+        session_config=config,
+        tools=[],
+        get_short_term_context=lambda: "no memory",
+        emit_agent_start=_noop,
+        emit_agent_done=_noop,
+        emit_tool_call=_noop,
+    )
+    agent = sa._build_agent()
+
+    assert agent is not None
+    assert isinstance(agent, Agent)
+
+
+@pytest.mark.parametrize("provider,model_name,tools,expected_count", [
+    ("anthropic", "claude-haiku-4-5-20251001", [], 0),
+    ("anthropic", "claude-haiku-4-5-20251001", [_dummy_async_tool], 1),
+    ("openai", "gpt-4o", [_dummy_sync_tool, _dummy_async_tool], 2),
+    ("google", "gemini-2.5-flash", [_dummy_sync_tool, _dummy_async_tool], 2),
+])
+def test_build_agent_tools_count(provider, model_name, tools, expected_count, monkeypatch):
+    """Wrapped tools are registered on the agent with the correct count."""
+    import config as cfg
+
+    monkeypatch.setattr(cfg.settings, "openai_api_key", "test-openai-key")
+    monkeypatch.setattr(cfg.settings, "google_api_key", "test-google-key")
+    monkeypatch.setattr(cfg.settings, "anthropic_api_key", "test-anthropic-key")
+
+    from agent import SessionAgent
+
+    config = SessionConfig(model_provider=provider, agent_model=model_name)
+    sa = SessionAgent(
+        session_config=config,
+        tools=tools,
+        get_short_term_context=lambda: "no memory",
+        emit_agent_start=_noop,
+        emit_agent_done=_noop,
+        emit_tool_call=_noop,
+    )
+    agent = sa._build_agent()
+
+    assert len(agent._function_toolset.tools) == expected_count
+
+
+# ---------------------------------------------------------------------------
+# System prompt rendering (via live agent — monkeypatch)
+# ---------------------------------------------------------------------------
+
+def _render_system_prompt(agent) -> str:
+    """Call the registered system prompt function and return the rendered string."""
+    runner = agent._system_prompt_functions[0]
+    return runner.function()
+
+
+def test_system_prompt_no_extras_via_agent(monkeypatch):
+    import config as cfg
+    monkeypatch.setattr(cfg.settings, "anthropic_api_key", "test-key")
+
+    from agent import SessionAgent
+
+    sa = SessionAgent(
+        session_config=SessionConfig(),
+        tools=[],
+        get_short_term_context=lambda: "empty memory",
+        emit_agent_start=_noop,
+        emit_agent_done=_noop,
+        emit_tool_call=_noop,
+    )
+    agent = sa._build_agent()
+    prompt = _render_system_prompt(agent)
+
+    assert "empty memory" in prompt
+    assert "Session context" not in prompt
+    assert "Additional instructions" not in prompt
+
+
+def test_system_prompt_with_theme_via_agent(monkeypatch):
+    import config as cfg
+    monkeypatch.setattr(cfg.settings, "anthropic_api_key", "test-key")
+
+    from agent import SessionAgent
+
+    sa = SessionAgent(
+        session_config=SessionConfig(theme="Dungeons & Dragons campaign"),
+        tools=[],
+        get_short_term_context=lambda: "no memory",
+        emit_agent_start=_noop,
+        emit_agent_done=_noop,
+        emit_tool_call=_noop,
+    )
+    agent = sa._build_agent()
+    prompt = _render_system_prompt(agent)
+
+    assert "Dungeons & Dragons campaign" in prompt
+    assert "Session context" in prompt
+    assert "Additional instructions" not in prompt
+
+
+def test_system_prompt_with_custom_via_agent(monkeypatch):
+    import config as cfg
+    monkeypatch.setattr(cfg.settings, "anthropic_api_key", "test-key")
+
+    from agent import SessionAgent
+
+    sa = SessionAgent(
+        session_config=SessionConfig(custom_system_prompt="Always respond in bullet points."),
+        tools=[],
+        get_short_term_context=lambda: "memory here",
+        emit_agent_start=_noop,
+        emit_agent_done=_noop,
+        emit_tool_call=_noop,
+    )
+    agent = sa._build_agent()
+    prompt = _render_system_prompt(agent)
+
+    assert "Always respond in bullet points." in prompt
+    assert "Additional instructions" in prompt
+    assert "Session context" not in prompt
+
+
+def test_system_prompt_reflects_dynamic_context(monkeypatch):
+    """System prompt re-renders dynamically on each call, reflecting updated context."""
+    import config as cfg
+    monkeypatch.setattr(cfg.settings, "anthropic_api_key", "test-key")
+
+    from agent import SessionAgent
+
+    context = {"value": "initial context"}
+    sa = SessionAgent(
+        session_config=SessionConfig(),
+        tools=[],
+        get_short_term_context=lambda: context["value"],
+        emit_agent_start=_noop,
+        emit_agent_done=_noop,
+        emit_tool_call=_noop,
+    )
+    agent = sa._build_agent()
+
+    assert "initial context" in _render_system_prompt(agent)
+    context["value"] = "updated context"
+    assert "updated context" in _render_system_prompt(agent)
+    assert "initial context" not in _render_system_prompt(agent)
+
+
+# ---------------------------------------------------------------------------
+# System prompt rendering — template-level tests (no API calls)
 # ---------------------------------------------------------------------------
 
 def test_system_prompt_base_rendering():
@@ -334,6 +499,7 @@ OPENAI_CHAT_EXCLUDE = [
     "gpt-4o-transcribe",
     "gpt-4o-audio-preview",
     "tts-1",
+    "whisper-1",
 ]
 
 
@@ -359,6 +525,7 @@ GEMINI_CHAT_INCLUDE = [
     "gemini-2.5-flash",
     "gemini-3.1-flash-lite-preview",
     "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview",
 ]
 
 GEMINI_CHAT_EXCLUDE = [
