@@ -195,7 +195,7 @@ async def websocket_handler(ws: WebSocket) -> None:
             # Binary frame → raw PCM audio
             if msg.get("bytes"):
                 if session:
-                    logger.debug("Audio chunk received: %d bytes", len(msg["bytes"]))
+                    logger.info("Audio chunk received: %d bytes", len(msg["bytes"]))
                     await session.handle_audio(msg["bytes"])
                 continue
 

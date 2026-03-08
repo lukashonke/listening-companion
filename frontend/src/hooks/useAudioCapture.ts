@@ -31,7 +31,14 @@ export function useAudioCapture({ onAudioChunk, sampleRate = 16_000 }: UseAudioC
     }
 
     source.connect(workletNode)
-    // Do NOT connect to destination — we don't want to hear our own mic
+
+    // Connect to destination through a silent gain node so the AudioWorklet is
+    // part of the rendering graph. Without this, the Web Audio API pull model
+    // never schedules the worklet's process() and no audio data is produced.
+    const silentGain = context.createGain()
+    silentGain.gain.value = 0
+    workletNode.connect(silentGain)
+    silentGain.connect(context.destination)
   }, [sampleRate])
 
   const stop = useCallback(() => {
