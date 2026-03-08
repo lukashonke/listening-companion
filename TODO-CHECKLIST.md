@@ -1,5 +1,12 @@
 # TODO Checklist — Listening Companion Fixes
 
+## ⚠️ CRITICAL — DO NOT CHANGE THESE
+- **ElevenLabs EU endpoints** in `backend/config.py` MUST stay as:
+  - `elevenlabs_eu_endpoint = "https://api.eu.residency.elevenlabs.io"`
+  - `elevenlabs_stt_endpoint = "wss://api.eu.residency.elevenlabs.io"`
+  - `elevenlabs_stt_model = "scribe_v2_realtime"`
+  - DO NOT "fix" these — `api.eu.elevenlabs.io` does NOT exist (NXDOMAIN).
+
 ## Bug Fixes
 
 - [x] **B1: Recording should require an active session**
