@@ -117,6 +117,10 @@ You have tools to:
 - Track entities, action items, quotes (if those tools are enabled)
 
 ## Guidelines
+- When the user asks you a question directly, ALWAYS respond verbally using the answer_tts \
+tool. You can also use other tools (generate_image, memory tools) in the same response — \
+for example, if the user asks "What does a black hole look like?", you should BOTH speak \
+an answer AND generate an image.
 - Be concise and act on what is NEW in the transcript
 - Don't repeat actions you have already taken in this session
 - If nothing meaningful happened, do nothing — it is fine to call no tools
@@ -146,6 +150,8 @@ class SessionAgent:
         self._loop_task: asyncio.Task | None = None
         self._running = False
         self._last_transcript_count = 0
+        # Track tool calls within a single agent turn for logging
+        self._turn_tool_calls: list[str] = []
         # Transcript trigger state
         self._invoke_running = False  # True while an agent invocation is in progress
         self._last_invoke_time: float = 0.0  # monotonic time of last invocation start
@@ -235,7 +241,8 @@ class SessionAgent:
             async def async_wrapper(*args, **kwargs):
                 tool_args = {param_names[i]: v for i, v in enumerate(args) if i < len(param_names)}
                 tool_args.update(kwargs)
-                logger.info("Tool invoked: %s args=%s", fn.__name__, list(tool_args.keys()))
+                self._turn_tool_calls.append(fn.__name__)
+                logger.info("Tool invoked: %s args=%s (turn call #%d)", fn.__name__, list(tool_args.keys()), len(self._turn_tool_calls))
                 result = error = None
                 try:
                     result = await fn(*args, **kwargs)
@@ -252,6 +259,8 @@ class SessionAgent:
             def sync_wrapper(*args, **kwargs):
                 tool_args = {param_names[i]: v for i, v in enumerate(args) if i < len(param_names)}
                 tool_args.update(kwargs)
+                self._turn_tool_calls.append(fn.__name__)
+                logger.info("Tool invoked: %s args=%s (turn call #%d)", fn.__name__, list(tool_args.keys()), len(self._turn_tool_calls))
                 result = error = None
                 try:
                     result = fn(*args, **kwargs)
@@ -414,6 +423,9 @@ class SessionAgent:
 
         user_prompt = "\n".join(parts)
 
+        # Reset per-turn tool call tracker
+        self._turn_tool_calls = []
+
         await self._emit_agent_start()
         try:
             async with asyncio.timeout(settings.agent_timeout_s):
@@ -432,4 +444,16 @@ class SessionAgent:
         except Exception as exc:
             logger.error("Agent invocation failed: %s", exc)
         finally:
+            # Log summary of tool calls for this turn
+            count = len(self._turn_tool_calls)
+            if count > 1:
+                logger.info(
+                    "Agent turn used %d tools: %s",
+                    count,
+                    ", ".join(self._turn_tool_calls),
+                )
+            elif count == 1:
+                logger.info("Agent turn used 1 tool: %s", self._turn_tool_calls[0])
+            else:
+                logger.info("Agent turn used no tools")
             await self._emit_agent_done()

@@ -246,6 +246,20 @@
   - Persist in localStorage and send via session config like other settings.
   - Backend: use the user-provided prompt as-is (with variable substitution for `{theme}`, `{memory}`, etc.) instead of always prepending the built-in template.
 
+## Bug Fixes (Round 3)
+
+- [ ] **B6: Agent generates image but doesn't speak (TTS not triggered)**
+  When asked "Can you hear me? Can you tell me something nice to generate an image?", the agent only generated an image but did NOT use TTS to speak back.
+  
+  **Expected behavior:** The agent should BOTH speak (TTS) AND generate an image when the user asks for both — or at minimum, always speak a response to a direct question. Image generation should not suppress or replace TTS output.
+  
+  **Investigate:**
+  - Is the agent calling both tools (speak + generate_image) or only one?
+  - Does calling generate_image somehow prevent the TTS tool from being called in the same agent turn?
+  - Is there a tool call ordering issue — does the agent stop after the first tool call?
+  - Check if Pydantic AI limits the number of tool calls per turn
+  - Check the system prompt — does it instruct the agent to speak responses? It should be clear that the agent should always verbally respond to direct questions, in addition to any other tool use.
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03
