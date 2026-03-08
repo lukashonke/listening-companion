@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL DEFAULT '',
     name_source TEXT NOT NULL DEFAULT 'default',
+    summary     TEXT NOT NULL DEFAULT '',
     created_at  REAL NOT NULL,
     ended_at    REAL,
     config      TEXT NOT NULL DEFAULT '{}'
@@ -72,6 +73,11 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     if "name_source" not in cols:
         await db.execute(
             "ALTER TABLE sessions ADD COLUMN name_source TEXT NOT NULL DEFAULT 'default'"
+        )
+        await db.commit()
+    if "summary" not in cols:
+        await db.execute(
+            "ALTER TABLE sessions ADD COLUMN summary TEXT NOT NULL DEFAULT ''"
         )
         await db.commit()
 

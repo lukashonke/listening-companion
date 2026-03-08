@@ -46,6 +46,7 @@ class Session(BaseModel):
     id: str = Field(default_factory=lambda: new_id("sess_"))
     name: str = ""
     name_source: str = "default"  # 'default' | 'auto' | 'user'
+    summary: str = ""
     created_at: float = Field(default_factory=now)
     ended_at: float | None = None
     config: SessionConfig = Field(default_factory=SessionConfig)
@@ -146,6 +147,11 @@ class WsSessionNameUpdate(BaseModel):
     type: Literal["session_name_update"] = "session_name_update"
     name: str
     name_source: str  # 'auto' or 'user'
+
+
+class WsSessionSummaryUpdate(BaseModel):
+    type: Literal["session_summary_update"] = "session_summary_update"
+    summary: str
 
 
 # ── Client → Server frames ────────────────────────────────────────────────────

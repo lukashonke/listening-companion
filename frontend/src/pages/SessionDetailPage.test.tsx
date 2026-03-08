@@ -100,6 +100,64 @@ describe('SessionDetailPage', () => {
     expect(images.length).toBeGreaterThanOrEqual(2)
   })
 
+  it('displays session summary when present', async () => {
+    const sessionWithSummary = {
+      ...mockSession,
+      summary: 'A detailed discussion about music theory and harmonic progressions.',
+    }
+    mockApiFetch.mockImplementation((url: string) => {
+      if (url.includes('/images')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(sessionWithSummary),
+      })
+    })
+
+    renderWithRouter('sess_test123')
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Session')).toBeInTheDocument()
+    })
+
+    // Summary should be visible
+    await waitFor(() => {
+      expect(screen.getByText('A detailed discussion about music theory and harmonic progressions.')).toBeInTheDocument()
+    })
+  })
+
+  it('does not display summary section when summary is empty', async () => {
+    const sessionNoSummary = {
+      ...mockSession,
+      summary: '',
+    }
+    mockApiFetch.mockImplementation((url: string) => {
+      if (url.includes('/images')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(sessionNoSummary),
+      })
+    })
+
+    renderWithRouter('sess_test123')
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Session')).toBeInTheDocument()
+    })
+
+    // Summary label should not be present
+    expect(screen.queryByText('Summary')).not.toBeInTheDocument()
+  })
+
   it('shows empty state when no images exist', async () => {
     mockApiFetch.mockImplementation((url: string) => {
       if (url.includes('/images')) {

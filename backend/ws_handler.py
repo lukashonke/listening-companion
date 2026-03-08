@@ -24,6 +24,7 @@ from models import (
     WsSessionStatus,
     WsLog,
     WsSessionNameUpdate,
+    WsSessionSummaryUpdate,
 )
 from memory.short_term import ShortTermMemory
 from memory.long_term import LongTermMemory
@@ -70,6 +71,9 @@ class ActiveSession:
         self.transcript: list[TranscriptChunk] = []
         self.transcript_chunk_count: int = 0
         self._auto_naming_in_progress: bool = False
+        self._tool_call_log: list[dict] = []
+        self._summarization_timer: asyncio.Task | None = None
+        self._summarization_in_progress: bool = False
         self._db = None
         self._short_term: ShortTermMemory | None = None
         self._long_term: LongTermMemory | None = None
@@ -154,6 +158,10 @@ class ActiveSession:
             get_transcript=lambda: self.transcript,
         )
 
+        # Start auto-summarization timer if enabled
+        if self.config.auto_summarization_enabled:
+            self._summarization_timer = asyncio.create_task(self._summarization_loop())
+
         await self._emit(WsSessionStatus(state="listening"))
         # If resuming, push existing memory to the frontend immediately
         if self._resume and self._short_term:
@@ -165,6 +173,14 @@ class ActiveSession:
         if self._log_handler:
             logging.getLogger().removeHandler(self._log_handler)
             self._log_handler = None
+        # Cancel summarization timer
+        if self._summarization_timer and not self._summarization_timer.done():
+            self._summarization_timer.cancel()
+            try:
+                await self._summarization_timer
+            except asyncio.CancelledError:
+                pass
+            self._summarization_timer = None
         if self._agent:
             await self._agent.stop_loop()
         if self._stt:
@@ -318,6 +334,149 @@ class ActiveSession:
             logger.warning("LLM call for auto-naming failed: %s", exc)
             return None
 
+    # ── Auto-summarization ──────────────────────────────────────────────────
+
+    async def _summarization_loop(self) -> None:
+        """Background loop that triggers summarization at configured intervals."""
+        try:
+            while True:
+                await asyncio.sleep(self.config.auto_summarization_interval)
+                await self._run_summarization()
+        except asyncio.CancelledError:
+            pass
+
+    async def _run_summarization(self) -> None:
+        """Run a single summarization cycle."""
+        if not self.config.auto_summarization_enabled:
+            return
+        if not self.transcript:
+            return
+        if self._summarization_in_progress:
+            return
+
+        self._summarization_in_progress = True
+        try:
+            # Gather transcript text
+            transcript_text = "\n".join(
+                f"[{c.speaker}] {c.text}" for c in self.transcript
+            )
+
+            # Gather tool call previews (~50 chars each)
+            tool_previews = ""
+            if self._tool_call_log:
+                previews = []
+                for tc in self._tool_call_log:
+                    tool_name = tc.get("tool", "unknown")
+                    args_str = str(tc.get("args", {}))
+                    preview = f"{tool_name}: {args_str}"
+                    if len(preview) > 50:
+                        preview = preview[:47] + "..."
+                    previews.append(preview)
+                tool_previews = "\n".join(previews)
+
+            # Get previous summary from DB
+            previous_summary = ""
+            if self._db:
+                async with self._db.execute(
+                    "SELECT summary FROM sessions WHERE id = ?", (self.id,)
+                ) as cur:
+                    row = await cur.fetchone()
+                    if row and row[0]:
+                        previous_summary = row[0]
+
+            # Trim transcript if too long
+            max_len = self.config.auto_summarization_max_transcript_length
+            if len(transcript_text) > max_len:
+                # Keep recent content (trim from the start)
+                transcript_text = transcript_text[-max_len:]
+                # Try to start at a clean line boundary
+                newline_pos = transcript_text.find("\n")
+                if newline_pos > 0 and newline_pos < 200:
+                    transcript_text = transcript_text[newline_pos + 1:]
+
+            # Call LLM for summarization
+            summary = await self._call_summarization_llm(
+                transcript_text=transcript_text,
+                tool_previews=tool_previews,
+                previous_summary=previous_summary,
+            )
+
+            if summary:
+                # Store summary in DB
+                if self._db:
+                    await self._db.execute(
+                        "UPDATE sessions SET summary = ? WHERE id = ?",
+                        (summary, self.id),
+                    )
+                    await self._db.commit()
+
+                # Emit WS event
+                await self._emit(WsSessionSummaryUpdate(summary=summary))
+                logger.info("Auto-summarization updated for session %s", self.id)
+
+        except Exception as exc:
+            logger.warning("Auto-summarization failed: %s", exc)
+        finally:
+            self._summarization_in_progress = False
+
+    async def _call_summarization_llm(
+        self,
+        transcript_text: str,
+        tool_previews: str,
+        previous_summary: str,
+    ) -> str | None:
+        """Make a simple LLM call to generate a session summary."""
+        parts = []
+        parts.append(
+            "Given the following conversation transcript and previous summary, "
+            "provide an updated comprehensive summary."
+        )
+        if previous_summary:
+            parts.append(f"\nPrevious summary: {previous_summary}")
+        if tool_previews:
+            parts.append(f"\nTool activity: {tool_previews}")
+        parts.append(f"\nRecent transcript: {transcript_text}")
+        parts.append("\nProvide a concise but thorough summary.")
+
+        prompt = "\n".join(parts)
+
+        try:
+            from pydantic_ai import Agent
+
+            provider = self.config.model_provider or "anthropic"
+            if provider == "openai":
+                from pydantic_ai.models.openai import OpenAIModel
+                from pydantic_ai.providers.openai import OpenAIProvider
+                model_name = self.config.agent_model or "gpt-4o"
+                model = OpenAIModel(
+                    model_name,
+                    provider=OpenAIProvider(api_key=settings.openai_api_key),
+                )
+            elif provider == "google":
+                from pydantic_ai.models.google import GoogleModel
+                from pydantic_ai.providers.google import GoogleProvider
+                model_name = self.config.agent_model or "gemini-2.5-flash"
+                model = GoogleModel(
+                    model_name,
+                    provider=GoogleProvider(api_key=settings.google_api_key),
+                )
+            else:
+                from pydantic_ai.models.anthropic import AnthropicModel
+                from pydantic_ai.providers.anthropic import AnthropicProvider
+                model_name = self.config.agent_model or settings.claude_model
+                model = AnthropicModel(
+                    model_name,
+                    provider=AnthropicProvider(api_key=settings.anthropic_api_key),
+                )
+
+            agent = Agent(model=model)
+            result = await agent.run(prompt)
+            summary = result.output.strip()
+            return summary if summary else None
+        except Exception as exc:
+            logger.warning("LLM call for auto-summarization failed: %s", exc)
+            return None
+
     # ── Emit helpers ───────────────────────────────────────────────────────────
 
     async def _emit(self, event) -> None:
@@ -337,6 +496,8 @@ class ActiveSession:
     ) -> None:
         result_val = result if not isinstance(result, Exception) else str(result)
         await self._emit(WsToolCall(tool=tool, args=args, result=result_val, error=error))
+        # Track tool calls for summarization context
+        self._tool_call_log.append({"tool": tool, "args": args, "ts": time.time()})
 
     async def _emit_memory_update(self) -> None:
         if self._short_term:

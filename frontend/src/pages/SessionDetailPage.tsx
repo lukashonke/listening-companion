@@ -33,6 +33,7 @@ interface SessionDetail {
   created_at: number
   ended_at: number | null
   config: string
+  summary: string
   memory: MemoryEntry[]
 }
 
@@ -208,6 +209,13 @@ export function SessionDetailPage() {
           </Button>
         )}
       </div>
+
+      {session.summary && (
+        <div className="border-b border-border px-4 py-3 shrink-0">
+          <p className="text-muted-foreground text-xs uppercase tracking-wide font-medium mb-1">Summary</p>
+          <p className="text-sm text-foreground leading-relaxed">{session.summary}</p>
+        </div>
+      )}
 
       <Tabs defaultValue="memory" className="flex flex-col flex-1 min-h-0">
         <div className="border-b border-border px-4 shrink-0">

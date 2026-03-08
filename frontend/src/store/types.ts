@@ -89,6 +89,7 @@ export interface AppState {
   error: AppError | null
   isRecording: boolean
   sessionName: string
+  sessionSummary: string
   config: SessionConfig
   resumeSessionId: string | null
   /** Currently spoken TTS text (for live stage display) */
@@ -108,3 +109,4 @@ export type WSEvent =
   | { type: 'error'; code: string; message: string; fatal: boolean }
   | { type: 'log'; level: LogLevel; message: string; ts: number }
   | { type: 'session_name_update'; name: string; name_source: string }
+  | { type: 'session_summary_update'; summary: string }

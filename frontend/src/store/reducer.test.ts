@@ -140,6 +140,35 @@ describe('appReducer', () => {
     const next = appReducer(stateWithName, event)
     expect(next.sessionName).toBe('New Auto Name')
   })
+
+  it('updates sessionSummary on session_summary_update event', () => {
+    const event: WSEvent = {
+      type: 'session_summary_update',
+      summary: 'A discussion about music theory and chord progressions.',
+    }
+    const next = appReducer(initialState, event)
+    expect(next.sessionSummary).toBe('A discussion about music theory and chord progressions.')
+  })
+
+  it('session_summary_update replaces existing summary', () => {
+    const stateWithSummary = { ...initialState, sessionSummary: 'Old summary' }
+    const event: WSEvent = {
+      type: 'session_summary_update',
+      summary: 'Updated comprehensive summary with new content.',
+    }
+    const next = appReducer(stateWithSummary, event)
+    expect(next.sessionSummary).toBe('Updated comprehensive summary with new content.')
+  })
+
+  it('session_summary_update clears summary with empty string', () => {
+    const stateWithSummary = { ...initialState, sessionSummary: 'Some summary' }
+    const event: WSEvent = {
+      type: 'session_summary_update',
+      summary: '',
+    }
+    const next = appReducer(stateWithSummary, event)
+    expect(next.sessionSummary).toBe('')
+  })
 })
 
 describe('DEFAULT_CONFIG background AI fields', () => {
@@ -153,6 +182,10 @@ describe('DEFAULT_CONFIG background AI fields', () => {
     expect(initialState.config.auto_summarization_enabled).toBe(true)
     expect(initialState.config.auto_summarization_interval).toBe(300)
     expect(initialState.config.auto_summarization_max_transcript_length).toBe(50000)
+  })
+
+  it('has empty sessionSummary in initial state', () => {
+    expect(initialState.sessionSummary).toBe('')
   })
 })
 
@@ -193,5 +226,15 @@ describe('uiReducer', () => {
     const action: UIAction = { type: 'RESET_SESSION' }
     const next = uiReducer(stateWithImages, action)
     expect(next.images).toHaveLength(0)
+  })
+
+  it('RESET_SESSION clears sessionSummary', () => {
+    const stateWithSummary = {
+      ...initialState,
+      sessionSummary: 'Some summary from previous session',
+    }
+    const action: UIAction = { type: 'RESET_SESSION' }
+    const next = uiReducer(stateWithSummary, action)
+    expect(next.sessionSummary).toBe('')
   })
 })

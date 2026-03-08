@@ -264,7 +264,7 @@ async def list_sessions(offset: int = 0, limit: int = 20):
 async def get_session(session_id: str):
     db = await get_db()
     async with db.execute(
-        "SELECT id, name, name_source, created_at, ended_at, config FROM sessions WHERE id = ?",
+        "SELECT id, name, name_source, summary, created_at, ended_at, config FROM sessions WHERE id = ?",
         (session_id,),
     ) as cursor:
         row = await cursor.fetchone()

@@ -36,6 +36,7 @@ export const initialState: AppState = {
   error: null,
   isRecording: false,
   sessionName: 'New Session',
+  sessionSummary: '',
   config: DEFAULT_CONFIG,
   resumeSessionId: null,
   currentSpeech: null,
@@ -84,6 +85,10 @@ const handlers: Partial<Record<WSEvent['type'], Handler>> = {
   session_name_update: (s, e) => {
     const ev = e as Extract<WSEvent, { type: 'session_name_update' }>
     return { ...s, sessionName: ev.name }
+  },
+  session_summary_update: (s, e) => {
+    const ev = e as Extract<WSEvent, { type: 'session_summary_update' }>
+    return { ...s, sessionSummary: ev.summary }
   },
 }
 
