@@ -43,6 +43,8 @@ class SessionConfig(BaseModel):
     # R19: Agent trigger mode
     agent_trigger_mode: str = "transcript"  # 'transcript' (default) or 'timer' (legacy)
     agent_trigger_cooldown_s: float = 2  # minimum seconds between agent runs in transcript mode
+    # R20: Full system prompt override (replaces built-in when non-empty)
+    full_system_prompt: str = ""
 
 
 class Session(BaseModel):

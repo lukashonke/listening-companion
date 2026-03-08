@@ -113,6 +113,7 @@ export function SettingsPage() {
   const [geminiImageModels, setGeminiImageModels] = useState<{ value: string; label: string }[] | null>(null)
   const [voices, setVoices] = useState<{ id: string; name: string; category: string }[]>([])
   const [loadingVoices, setLoadingVoices] = useState(false)
+  const [defaultSystemPrompt, setDefaultSystemPrompt] = useState('')
 
   useEffect(() => {
     if (config.model_provider !== 'openai') return
@@ -153,6 +154,17 @@ export function SettingsPage() {
       })
       .catch(() => { /* keep empty — user can still type voice_id */ })
       .finally(() => setLoadingVoices(false))
+  }, [])
+
+  useEffect(() => {
+    apiFetch('/api/default-system-prompt')
+      .then(r => r.json())
+      .then(data => {
+        if (data.template) {
+          setDefaultSystemPrompt(data.template)
+        }
+      })
+      .catch(() => { /* fall back to empty — user can still type */ })
   }, [])
 
   useEffect(() => {
@@ -425,6 +437,32 @@ export function SettingsPage() {
             placeholder="Additional instructions appended to the agent's system prompt…"
           />
           <p className="text-xs text-muted-foreground">Appended to the built-in prompt. Leave blank to use defaults.</p>
+        </div>
+      </section>
+
+      {/* System Prompt */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">System Prompt</h2>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Full System Prompt</label>
+          <textarea
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm font-mono resize-y"
+            rows={12}
+            value={config.full_system_prompt}
+            onChange={e => updateConfig({ full_system_prompt: e.target.value })}
+            placeholder={defaultSystemPrompt || 'Enter a custom system prompt to fully replace the built-in prompt…'}
+          />
+          <p className="text-xs text-muted-foreground">
+            Replaces the entire built-in prompt when set. Available variables: {'{short_term_memory}'}, {'{theme_section}'}, {'{custom_prompt_section}'}, {'{image_style_section}'}. Leave empty to use the default prompt.
+          </p>
+          <button
+            type="button"
+            onClick={() => updateConfig({ full_system_prompt: '' })}
+            className="px-3 py-1.5 text-xs rounded-md border bg-background hover:bg-muted transition-colors"
+          >
+            Reset to Default
+          </button>
         </div>
       </section>
 

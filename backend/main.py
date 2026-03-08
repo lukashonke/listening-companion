@@ -246,6 +246,13 @@ async def list_elevenlabs_voices():
     return {"voices": voices}
 
 
+@app.get("/api/default-system-prompt")
+async def get_default_system_prompt():
+    """Return the built-in SYSTEM_PROMPT_TEMPLATE so the frontend can show it as default."""
+    from agent import SYSTEM_PROMPT_TEMPLATE
+    return {"template": SYSTEM_PROMPT_TEMPLATE}
+
+
 @app.get("/api/sessions")
 async def list_sessions(offset: int = 0, limit: int = 20):
     db = await get_db()

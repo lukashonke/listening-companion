@@ -202,12 +202,26 @@ class SessionAgent:
             image_style_section = ""
             if config.image_prompt_theme:
                 image_style_section = f"\n  - When generating images, always incorporate this style/theme: {config.image_prompt_theme}"
-            return SYSTEM_PROMPT_TEMPLATE.format(
-                short_term_memory=get_context(),
-                theme_section=theme_section,
-                custom_prompt_section=custom_prompt_section,
-                image_style_section=image_style_section,
-            )
+
+            # R20: Use full_system_prompt as complete override when non-empty
+            template = config.full_system_prompt if config.full_system_prompt else SYSTEM_PROMPT_TEMPLATE
+
+            # Apply variable substitution — unknown variables are left as-is
+            # to avoid KeyError for user prompts that don't use all variables.
+            substitutions = {
+                "short_term_memory": get_context(),
+                "theme_section": theme_section,
+                "custom_prompt_section": custom_prompt_section,
+                "image_style_section": image_style_section,
+            }
+            try:
+                return template.format(**substitutions)
+            except KeyError:
+                # If the custom template has unknown placeholders, do partial substitution
+                result = template
+                for key, value in substitutions.items():
+                    result = result.replace("{" + key + "}", value)
+                return result
 
         return agent
 

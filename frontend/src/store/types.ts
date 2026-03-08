@@ -29,6 +29,8 @@ export interface SessionConfig {
   auto_summarization_max_transcript_length: number;
   // R19: Agent trigger mode
   agent_trigger_mode: string;
+  // R20: Full system prompt override (replaces built-in when non-empty)
+  full_system_prompt: string;
 }
 
 export interface TranscriptChunk {

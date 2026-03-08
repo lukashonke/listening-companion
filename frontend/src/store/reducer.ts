@@ -24,6 +24,7 @@ const DEFAULT_CONFIG: SessionConfig = {
   auto_summarization_interval: 300,
   auto_summarization_max_transcript_length: 50000,
   agent_trigger_mode: 'transcript',
+  full_system_prompt: '',
 }
 
 export const initialState: AppState = {
