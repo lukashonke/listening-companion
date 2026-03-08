@@ -70,8 +70,13 @@ export function useWebSocket({ url, onEvent }: UseWebSocketOptions): UseWebSocke
     }
   }, [connect])
 
+  const binaryChunkCountRef = useRef(0)
   const sendBinary = useCallback((data: ArrayBuffer) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      binaryChunkCountRef.current++
+      if (binaryChunkCountRef.current <= 3) {
+        console.log(`[WebSocket] Sending binary chunk #${binaryChunkCountRef.current}, byteLength:`, data.byteLength)
+      }
       wsRef.current.send(data)
     }
   }, [])

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Plus, Settings } from 'lucide-react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RecordButton } from './RecordButton'
@@ -27,20 +28,24 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
 
   const handleToggleRecord = useCallback(async () => {
     if (state.isRecording) {
+      console.log('[TopBar] Stopping recording')
       stopAudio()
       onSessionEnd()
       dispatchUI({ type: 'SET_RECORDING', payload: false })
     } else {
       setIsStarting(true)
       try {
+        console.log('[TopBar] Starting recording...')
         if (location.pathname !== '/sessions/current') {
           navigate('/sessions/current')
         }
         onSessionStart()
         await startAudio()
         dispatchUI({ type: 'SET_RECORDING', payload: true })
-      } catch {
-        // mic permission denied or unavailable — stay in idle state
+        console.log('[TopBar] Recording started successfully')
+      } catch (err) {
+        console.error('[TopBar] Failed to start recording:', err)
+        toast.error('Failed to start recording — check mic permissions and console for details.')
       } finally {
         setIsStarting(false)
       }

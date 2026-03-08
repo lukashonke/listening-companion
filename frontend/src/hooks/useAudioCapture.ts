@@ -14,19 +14,33 @@ export function useAudioCapture({ onAudioChunk, sampleRate = 16_000 }: UseAudioC
   onAudioChunkRef.current = onAudioChunk
 
   const start = useCallback(async () => {
+    console.log('[AudioCapture] Requesting mic access...')
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     streamRef.current = stream
+    console.log('[AudioCapture] Mic acquired:', stream.getAudioTracks()[0]?.label)
 
     const context = new AudioContext({ sampleRate })
     contextRef.current = context
+    console.log('[AudioCapture] AudioContext created, sampleRate:', context.sampleRate, 'state:', context.state)
 
-    await context.audioWorklet.addModule('/audio-processor.worklet.js')
+    try {
+      await context.audioWorklet.addModule('/audio-processor.worklet.js')
+      console.log('[AudioCapture] AudioWorklet module loaded successfully')
+    } catch (err) {
+      console.error('[AudioCapture] Failed to load AudioWorklet module:', err)
+      throw err
+    }
 
     const source = context.createMediaStreamSource(stream)
     const workletNode = new AudioWorkletNode(context, 'audio-processor')
     workletNodeRef.current = workletNode
 
+    let chunkCount = 0
     workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+      chunkCount++
+      if (chunkCount <= 3) {
+        console.log(`[AudioCapture] Audio chunk #${chunkCount} produced, byteLength:`, e.data.byteLength)
+      }
       onAudioChunkRef.current(e.data)
     }
 
@@ -39,6 +53,7 @@ export function useAudioCapture({ onAudioChunk, sampleRate = 16_000 }: UseAudioC
     silentGain.gain.value = 0
     workletNode.connect(silentGain)
     silentGain.connect(context.destination)
+    console.log('[AudioCapture] Audio graph connected: source → worklet → silentGain(0) → destination')
   }, [sampleRate])
 
   const stop = useCallback(() => {
