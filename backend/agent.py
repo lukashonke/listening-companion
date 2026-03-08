@@ -12,6 +12,94 @@ from models import TranscriptChunk, SessionConfig
 
 logger = logging.getLogger(__name__)
 
+# Default max characters for transcript context before trimming.
+DEFAULT_MAX_TRANSCRIPT_CHARS = 30000
+
+# Memory-related tool names that get only a brief mention in context.
+_MEMORY_TOOLS = frozenset({
+    "save_short_term_memory",
+    "update_short_term_memory",
+    "remove_short_term_memory",
+    "save_long_term_memory",
+    "search_long_term_memory",
+})
+
+# Tools whose full args should be included in context.
+_IMAGE_TOOLS = frozenset({"generate_image"})
+_TTS_TOOLS = frozenset({"answer_tts"})
+
+
+def format_tool_call_history(tool_log: list[dict]) -> str:
+    """Format tool call history compactly for agent context.
+
+    Different detail levels per tool type:
+    - Image generation: include full parameters (prompt, style, provider, model)
+    - TTS (speak): include the full spoken text so agent doesn't repeat
+    - Memory tools: brief mention only (agent can see current memory directly)
+    """
+    if not tool_log:
+        return ""
+
+    lines = ["[Tool calls]"]
+    for entry in tool_log:
+        tool_name = entry.get("tool", "unknown")
+        args = entry.get("args", {})
+
+        if tool_name in _MEMORY_TOOLS:
+            # Brief mention — agent can see current memory state directly
+            lines.append(f"- {tool_name}() -> done")
+        elif tool_name in _IMAGE_TOOLS:
+            # Include full parameters for image generation
+            params = ", ".join(f"{k}='{v}'" for k, v in args.items() if v)
+            lines.append(f"- {tool_name}({params}) -> image saved")
+        elif tool_name in _TTS_TOOLS:
+            # Include full text that was spoken
+            text = args.get("text", "")
+            lines.append(f"- {tool_name}(text='{text}')")
+        else:
+            # Other tools: include args compactly
+            params = ", ".join(f"{k}='{v}'" for k, v in args.items() if v)
+            lines.append(f"- {tool_name}({params})")
+
+    return "\n".join(lines)
+
+
+def build_transcript_context(
+    transcript: list[TranscriptChunk],
+    max_chars: int = DEFAULT_MAX_TRANSCRIPT_CHARS,
+) -> str:
+    """Build full transcript context, trimming oldest entries if too long.
+
+    Returns the conversation formatted as speaker-labeled lines. When the
+    total exceeds *max_chars*, the oldest entries are dropped and a note is
+    prepended indicating some history was trimmed.
+    """
+    if not transcript:
+        return ""
+
+    # Format all chunks
+    formatted = [
+        f"[{c.speaker} {c.ts:.0f}] {c.text}" for c in transcript
+    ]
+
+    full_text = "\n".join(formatted)
+
+    if len(full_text) <= max_chars:
+        return full_text
+
+    # Trim from the start — keep the most recent entries
+    trimmed_lines: list[str] = []
+    current_len = 0
+    for line in reversed(formatted):
+        line_len = len(line) + 1  # +1 for newline
+        if current_len + line_len > max_chars:
+            break
+        trimmed_lines.append(line)
+        current_len += line_len
+
+    trimmed_lines.reverse()
+    return "(earlier transcript trimmed)\n" + "\n".join(trimmed_lines)
+
 
 SYSTEM_PROMPT_TEMPLATE = """\
 You are an AI listening companion. You listen to ongoing conversations and help \
@@ -156,11 +244,13 @@ class SessionAgent:
             return sync_wrapper
 
     async def start_loop(
-        self, get_transcript: Callable[[], list[TranscriptChunk]]
+        self,
+        get_transcript: Callable[[], list[TranscriptChunk]],
+        get_tool_call_log: Callable[[], list[dict]] | None = None,
     ) -> None:
         self._running = True
         self._loop_task = asyncio.create_task(
-            self._agent_loop(get_transcript)
+            self._agent_loop(get_transcript, get_tool_call_log)
         )
 
     async def stop_loop(self) -> None:
@@ -173,7 +263,9 @@ class SessionAgent:
                 pass
 
     async def _agent_loop(
-        self, get_transcript: Callable[[], list[TranscriptChunk]]
+        self,
+        get_transcript: Callable[[], list[TranscriptChunk]],
+        get_tool_call_log: Callable[[], list[dict]] | None = None,
     ) -> None:
         # Build the agent lazily inside the loop task so that start_loop() never
         # raises — this ensures session_status:listening is always emitted even
@@ -189,33 +281,54 @@ class SessionAgent:
             if not self._running:
                 break
             try:
-                await self.invoke_once(get_transcript())
+                tool_log = get_tool_call_log() if get_tool_call_log else []
+                await self.invoke_once(get_transcript(), tool_call_log=tool_log)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
                 logger.error("Agent loop error (skipping cycle): %s", exc)
 
-    async def invoke_once(self, transcript: list[TranscriptChunk]) -> None:
-        """Run one agent invocation with current transcript."""
+    async def invoke_once(
+        self,
+        transcript: list[TranscriptChunk],
+        tool_call_log: list[dict] | None = None,
+    ) -> None:
+        """Run one agent invocation with full conversation context.
+
+        Provides the agent with:
+        - Full transcript history (or a trimmed rolling window if too long)
+        - Compact tool call history with detail levels per tool type
+        """
         if self._agent is None:
             logger.debug("Agent not yet built — skipping invocation")
             return
-        new_chunks = transcript[self._last_transcript_count:]
-        if not new_chunks:
+
+        # Detect whether there are new chunks since last invocation
+        if len(transcript) <= self._last_transcript_count:
             logger.debug("Agent skipping — no new transcript")
             return
 
         self._last_transcript_count = len(transcript)
 
-        cutoff = time.time() - settings.agent_transcript_window_s
-        window = [c for c in new_chunks if c.ts >= cutoff]
-        if not window:
+        # Build full transcript context (with trimming if too long)
+        transcript_text = build_transcript_context(transcript)
+        if not transcript_text:
             return
 
-        transcript_text = "\n".join(
-            f"[{c.speaker} {c.ts:.0f}] {c.text}" for c in window
-        )
-        user_prompt = f"New transcript:\n{transcript_text}"
+        # Build the user prompt with full conversation context
+        parts: list[str] = []
+        parts.append("## Conversation transcript")
+        parts.append(transcript_text)
+
+        # Include tool call history if available
+        if tool_call_log:
+            tool_history = format_tool_call_history(tool_call_log)
+            if tool_history:
+                parts.append("")
+                parts.append("## Previous tool calls this session")
+                parts.append(tool_history)
+
+        user_prompt = "\n".join(parts)
 
         await self._emit_agent_start()
         try:

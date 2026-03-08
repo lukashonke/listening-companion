@@ -153,9 +153,10 @@ class ActiveSession:
         )
         await self._stt.start()
 
-        # Start agent loop
+        # Start agent loop (pass tool call log so agent has full context)
         await self._agent.start_loop(
             get_transcript=lambda: self.transcript,
+            get_tool_call_log=lambda: self._tool_call_log,
         )
 
         # Start auto-summarization timer if enabled
