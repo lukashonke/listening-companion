@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { appReducer, initialState } from './reducer'
+import { appReducer, uiReducer, initialState } from './reducer'
+import type { UIAction } from './reducer'
 import type { WSEvent } from './types'
 
 describe('appReducer', () => {
@@ -88,5 +89,74 @@ describe('appReducer', () => {
     const event = { type: 'unknown_event' } as unknown as WSEvent
     const next = appReducer(initialState, event)
     expect(next).toBe(initialState)
+  })
+
+  it('appends images with /api/images/ persistent URLs', () => {
+    const event: WSEvent = {
+      type: 'image_generated',
+      url: '/api/images/abc123.png',
+      prompt: 'a forest scene',
+      ts: 1000,
+    }
+    const next = appReducer(initialState, event)
+    expect(next.images).toHaveLength(1)
+    expect(next.images[0].url).toBe('/api/images/abc123.png')
+    expect(next.images[0].prompt).toBe('a forest scene')
+  })
+
+  it('accumulates multiple images from image_generated events', () => {
+    let state = initialState
+    const images = [
+      { type: 'image_generated' as const, url: '/api/images/img1.png', prompt: 'sunset', ts: 1 },
+      { type: 'image_generated' as const, url: '/api/images/img2.png', prompt: 'forest', ts: 2 },
+      { type: 'image_generated' as const, url: '/api/images/img3.png', prompt: 'ocean', ts: 3 },
+    ]
+    for (const event of images) {
+      state = appReducer(state, event)
+    }
+    expect(state.images).toHaveLength(3)
+    expect(state.images[0].url).toBe('/api/images/img1.png')
+    expect(state.images[1].url).toBe('/api/images/img2.png')
+    expect(state.images[2].url).toBe('/api/images/img3.png')
+  })
+})
+
+describe('uiReducer', () => {
+  it('sets images via SET_IMAGES action', () => {
+    const action: UIAction = {
+      type: 'SET_IMAGES',
+      payload: [
+        { url: '/api/images/abc123.png', prompt: 'a sunset', ts: 1000 },
+        { url: '/api/images/def456.png', prompt: 'a forest', ts: 2000 },
+      ],
+    }
+    const next = uiReducer(initialState, action)
+    expect(next.images).toHaveLength(2)
+    expect(next.images[0].url).toBe('/api/images/abc123.png')
+    expect(next.images[1].url).toBe('/api/images/def456.png')
+  })
+
+  it('SET_IMAGES replaces existing images', () => {
+    const stateWithImages = {
+      ...initialState,
+      images: [{ url: '/api/images/old.png', prompt: 'old', ts: 500 }],
+    }
+    const action: UIAction = {
+      type: 'SET_IMAGES',
+      payload: [{ url: '/api/images/new.png', prompt: 'new', ts: 1000 }],
+    }
+    const next = uiReducer(stateWithImages, action)
+    expect(next.images).toHaveLength(1)
+    expect(next.images[0].url).toBe('/api/images/new.png')
+  })
+
+  it('RESET_SESSION clears images', () => {
+    const stateWithImages = {
+      ...initialState,
+      images: [{ url: '/api/images/abc.png', prompt: 'test', ts: 1000 }],
+    }
+    const action: UIAction = { type: 'RESET_SESSION' }
+    const next = uiReducer(stateWithImages, action)
+    expect(next.images).toHaveLength(0)
   })
 })

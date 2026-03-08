@@ -10,7 +10,7 @@ import type { WSEvent } from '@/store/types'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
-import { getWsUrl } from '@/lib/auth'
+import { apiFetch, getWsUrl } from '@/lib/auth'
 
 const WS_BASE = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
 const WS_URL = getWsUrl(WS_BASE)
@@ -57,6 +57,18 @@ export function AppLayout() {
     const payload: Record<string, unknown> = { type: 'session_start', name: state.sessionName, config: state.config }
     if (state.resumeSessionId) {
       payload.session_id = state.resumeSessionId
+      // Fetch existing images for this session so they appear in the live view
+      apiFetch(`/api/sessions/${state.resumeSessionId}/images`)
+        .then(r => r.ok ? r.json() : [])
+        .then((imgs: Array<{ url: string; prompt: string; created_at: number }>) => {
+          if (imgs.length > 0) {
+            dispatchUI({
+              type: 'SET_IMAGES',
+              payload: imgs.map(img => ({ url: img.url, prompt: img.prompt, ts: img.created_at })),
+            })
+          }
+        })
+        .catch(() => {})
       // Clear resume ID after use so next start creates a fresh session
       dispatchUI({ type: 'SET_RESUME_SESSION_ID', payload: null })
     }
