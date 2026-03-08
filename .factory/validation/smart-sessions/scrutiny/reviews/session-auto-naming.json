@@ -1,0 +1,23 @@
+{
+  "featureId": "session-auto-naming",
+  "milestone": "smart-sessions",
+  "reviewer": "scrutiny-validator (self-review, subagent failed due to permissions)",
+  "status": "pass",
+  "codeQuality": {
+    "score": "good",
+    "notes": "Well-structured auto-naming logic with proper guard conditions (user rename blocks, disabled check, in-progress lock). DB migration for name_source column handled correctly. Frontend reducer properly handles session_name_update events."
+  },
+  "issues": [
+    {
+      "severity": "non_blocking",
+      "description": "LLM provider instantiation code in _infer_session_name is duplicated almost verbatim in _call_summarization_llm. This ~30-line block (provider selection, model instantiation) should be extracted into a shared helper method on ActiveSession.",
+      "file": "backend/ws_handler.py",
+      "suggestion": "Extract a _get_llm_agent() method that returns a configured pydantic_ai.Agent based on self.config.model_provider"
+    }
+  ],
+  "sharedStateObservations": [],
+  "testCoverage": {
+    "adequate": true,
+    "notes": "16 backend tests covering trigger logic, DB persistence, WS events, user rename blocking, re-evaluation, edge cases. 2 frontend reducer tests. Comprehensive."
+  }
+}

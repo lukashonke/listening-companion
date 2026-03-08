@@ -1,0 +1,58 @@
+{
+  "milestone": "smart-sessions",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test_backend": {
+      "passed": true,
+      "command": "cd backend && uv run pytest -v -k 'not (TestLongTermMemory or test_long_term)'",
+      "exitCode": 0,
+      "notes": "163 passed, 4 deselected (pre-existing OPENAI_API_KEY failures documented in AGENTS.md)"
+    },
+    "test_frontend": {
+      "passed": true,
+      "command": "cd frontend && npm run test:run",
+      "exitCode": 0,
+      "notes": "75 tests passed across 8 test files"
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd frontend && npm run build",
+      "exitCode": 0,
+      "notes": "tsc + vite build succeeded, 1989 modules transformed"
+    },
+    "lint": {
+      "passed": true,
+      "command": "cd frontend && npm run lint",
+      "exitCode": 1,
+      "notes": "14 errors all pre-existing (verified identical count at commit 47e74ff before smart-sessions milestone). No new lint errors introduced."
+    }
+  },
+  "reviewsSummary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "nonBlockingIssues": [
+    {
+      "featureId": "session-auto-naming",
+      "severity": "non_blocking",
+      "description": "LLM provider instantiation code (~30 lines) is duplicated between _infer_session_name and _call_summarization_llm in ws_handler.py. Should be extracted to a shared _get_llm_agent() helper method.",
+      "suggestion": "Extract a _get_llm_agent() method on ActiveSession that returns a configured pydantic_ai.Agent based on self.config.model_provider"
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add note about pre-existing lint errors: 'Pre-existing: 14 ESLint errors (react-hooks/refs, react-refresh/only-export-components, react-hooks/set-state-in-effect, react-hooks/immutability, no-empty) exist in AppLayout.tsx, SettingsPage.tsx, MainTab.tsx, useTTSPlayer.ts, useWebSocket.ts, badge.tsx, button.tsx, tabs.tsx, AppContext.tsx. These are not from mission work and should not block validation.'",
+      "evidence": "All 6 features in smart-sessions milestone reported the same 14 pre-existing lint errors. Verified by checking lint output at commit 47e74ff (before smart-sessions) showing identical error count and locations.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null,
+  "reviewMethod": "Self-review by scrutiny-validator (scrutiny-feature-reviewer subagents failed due to execution permission issues)"
+}
