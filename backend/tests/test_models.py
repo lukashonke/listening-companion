@@ -24,7 +24,7 @@ def test_memory_entry_defaults():
 def test_session_config_defaults():
     config = SessionConfig()
     assert config.agent_interval_s == 30
-    assert config.image_provider == "placeholder"
+    assert config.image_provider == "gemini"
     assert config.tools == []
     assert config.speaker_diarization is False
 
