@@ -383,6 +383,24 @@ export function SettingsPage() {
         )}
 
         <div className="space-y-1.5">
+          <label className="text-sm font-medium">Trigger Mode</label>
+          <select
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+            value={config.agent_trigger_mode}
+            onChange={e => updateConfig({ agent_trigger_mode: e.target.value })}
+          >
+            <option value="transcript">On transcript</option>
+            <option value="timer">On timer</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {config.agent_trigger_mode === 'transcript'
+              ? 'Agent runs after each committed transcript chunk (with cooldown)'
+              : 'Agent runs on a fixed timer interval'}
+          </p>
+        </div>
+
+        {config.agent_trigger_mode === 'timer' && (
+        <div className="space-y-1.5">
           <label className="text-sm font-medium">Agent Interval</label>
           <select
             className="w-full px-3 py-2 rounded-md border bg-background text-sm"
@@ -395,6 +413,7 @@ export function SettingsPage() {
           </select>
           <p className="text-xs text-muted-foreground">How often the AI agent reviews the transcript</p>
         </div>
+        )}
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Custom System Prompt</label>

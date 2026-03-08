@@ -60,4 +60,18 @@ describe('SettingsPage', () => {
     expect(intervalInput).toBeTruthy()
     expect(maxLengthInput).toBeTruthy()
   })
+
+  it('renders Trigger Mode dropdown with transcript as default', () => {
+    renderSettings()
+    expect(screen.getByText('Trigger Mode')).toBeTruthy()
+    // The select should have 'On transcript' and 'On timer' options
+    expect(screen.getByText('On transcript')).toBeTruthy()
+    expect(screen.getByText('On timer')).toBeTruthy()
+  })
+
+  it('hides Agent Interval when trigger mode is transcript (default)', () => {
+    renderSettings()
+    // In transcript mode, Agent Interval should not be shown
+    expect(screen.queryByText('Agent Interval')).toBeNull()
+  })
 })

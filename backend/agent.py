@@ -146,6 +146,11 @@ class SessionAgent:
         self._loop_task: asyncio.Task | None = None
         self._running = False
         self._last_transcript_count = 0
+        # Transcript trigger state
+        self._invoke_running = False  # True while an agent invocation is in progress
+        self._last_invoke_time: float = 0.0  # monotonic time of last invocation start
+        self._get_transcript: Callable[[], list[TranscriptChunk]] | None = None
+        self._get_tool_call_log: Callable[[], list[dict]] | None = None
 
     def _build_agent(self):
         from pydantic_ai import Agent
@@ -249,9 +254,21 @@ class SessionAgent:
         get_tool_call_log: Callable[[], list[dict]] | None = None,
     ) -> None:
         self._running = True
-        self._loop_task = asyncio.create_task(
-            self._agent_loop(get_transcript, get_tool_call_log)
-        )
+        self._get_transcript = get_transcript
+        self._get_tool_call_log = get_tool_call_log
+
+        if self._config.agent_trigger_mode == "timer":
+            # Legacy timer-based mode
+            self._loop_task = asyncio.create_task(
+                self._agent_loop(get_transcript, get_tool_call_log)
+            )
+        else:
+            # Transcript-trigger mode: build agent eagerly, no timer loop
+            try:
+                self._agent = self._build_agent()
+            except Exception as exc:
+                logger.error("Agent build failed: %s", exc)
+                return
 
     async def stop_loop(self) -> None:
         self._running = False
@@ -261,6 +278,59 @@ class SessionAgent:
                 await self._loop_task
             except asyncio.CancelledError:
                 pass
+
+    async def trigger_agent_run(
+        self,
+        get_transcript: Callable[[], list[TranscriptChunk]] | None = None,
+        get_tool_call_log: Callable[[], list[dict]] | None = None,
+    ) -> None:
+        """Trigger an agent invocation if one isn't already running.
+
+        Used in transcript trigger mode. Respects a minimum cooldown between
+        runs to avoid excessive LLM calls for rapid transcripts. If the agent
+        IS already running, the trigger is silently skipped (no queuing).
+        """
+        if self._invoke_running:
+            logger.debug("Agent trigger skipped — already running")
+            return
+
+        # Check cooldown
+        now = time.monotonic()
+        cooldown = self._config.agent_trigger_cooldown_s
+        elapsed = now - self._last_invoke_time
+        if elapsed < cooldown:
+            logger.debug(
+                "Agent trigger skipped — cooldown (%.1fs < %.1fs)",
+                elapsed, cooldown,
+            )
+            return
+
+        # Use provided getters or fall back to stored ones
+        transcript_fn = get_transcript or self._get_transcript
+        tool_log_fn = get_tool_call_log or self._get_tool_call_log
+
+        if not transcript_fn:
+            logger.debug("Agent trigger skipped — no transcript getter")
+            return
+
+        # Fire and forget the invocation in a task
+        asyncio.create_task(self._run_triggered_invocation(transcript_fn, tool_log_fn))
+
+    async def _run_triggered_invocation(
+        self,
+        get_transcript: Callable[[], list[TranscriptChunk]],
+        get_tool_call_log: Callable[[], list[dict]] | None = None,
+    ) -> None:
+        """Execute a single agent invocation as a triggered task."""
+        self._invoke_running = True
+        self._last_invoke_time = time.monotonic()
+        try:
+            tool_log = get_tool_call_log() if get_tool_call_log else []
+            await self.invoke_once(get_transcript(), tool_call_log=tool_log)
+        except Exception as exc:
+            logger.error("Triggered agent invocation failed: %s", exc)
+        finally:
+            self._invoke_running = False
 
     async def _agent_loop(
         self,

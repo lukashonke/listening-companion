@@ -204,6 +204,10 @@ describe('DEFAULT_CONFIG background AI fields', () => {
     expect(initialState.config.auto_summarization_max_transcript_length).toBe(50000)
   })
 
+  it('has agent_trigger_mode default as transcript', () => {
+    expect(initialState.config.agent_trigger_mode).toBe('transcript')
+  })
+
   it('has empty sessionSummary in initial state', () => {
     expect(initialState.sessionSummary).toBe('')
   })

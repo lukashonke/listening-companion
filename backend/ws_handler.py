@@ -219,6 +219,9 @@ class ActiveSession:
         await self._emit(WsTranscriptChunk(text=text, speaker=speaker, ts=chunk.ts))
         # Trigger auto-naming check (fire and forget)
         asyncio.create_task(self._auto_name_task())
+        # R19: Trigger agent on committed transcript (if in transcript mode)
+        if self._agent and self.config.agent_trigger_mode == "transcript":
+            await self._agent.trigger_agent_run()
 
     # ── Auto-naming ──────────────────────────────────────────────────────────
 

@@ -27,6 +27,8 @@ export interface SessionConfig {
   auto_summarization_enabled: boolean;
   auto_summarization_interval: number;
   auto_summarization_max_transcript_length: number;
+  // R19: Agent trigger mode
+  agent_trigger_mode: string;
 }
 
 export interface TranscriptChunk {

@@ -40,6 +40,9 @@ class SessionConfig(BaseModel):
     auto_summarization_enabled: bool = True
     auto_summarization_interval: int = 300  # seconds between summarization runs
     auto_summarization_max_transcript_length: int = 50000  # max chars for LLM context
+    # R19: Agent trigger mode
+    agent_trigger_mode: str = "transcript"  # 'transcript' (default) or 'timer' (legacy)
+    agent_trigger_cooldown_s: float = 2  # minimum seconds between agent runs in transcript mode
 
 
 class Session(BaseModel):
