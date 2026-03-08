@@ -1,27 +1,37 @@
-"""ElevenLabs Scribe STT — WebSocket streaming bridge.
+"""ElevenLabs Scribe Realtime STT — WebSocket streaming bridge.
 
-Forwards raw PCM audio from the browser to ElevenLabs Scribe and delivers
-transcript chunks via a callback.
+Forwards raw PCM audio from the browser to ElevenLabs Scribe Realtime and
+delivers transcript chunks via a callback.
+
+Protocol (ElevenLabs Scribe Realtime API):
+  - Endpoint: /v1/speech-to-text/realtime
+  - Config via URL params: model_id, audio_format, commit_strategy, language_code
+  - Audio: JSON {"message_type": "input_audio_chunk", "audio_base_64": "<b64>",
+                 "commit": false, "sample_rate": 16000}
+  - Server events use "message_type" field (not "type"):
+      session_started, partial_transcript, committed_transcript, auth_error, etc.
 """
 from __future__ import annotations
 import asyncio
+import base64
 import json
 import logging
 from typing import Callable, Awaitable
 
-import websockets
+from websockets.asyncio.client import connect as ws_connect
+from websockets.connection import State
 from websockets.exceptions import ConnectionClosed
 
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-SCRIBE_WS_PATH = "/v1/speech-to-text/stream"
+SCRIBE_WS_PATH = "/v1/speech-to-text/realtime"
 
 
 class ScribeSTT:
     """
-    Maintains a WebSocket connection to ElevenLabs Scribe.
+    Maintains a WebSocket connection to ElevenLabs Scribe Realtime.
     Call send_audio(chunk) with raw PCM bytes from the browser.
     Transcript chunks are delivered to on_transcript(text, speaker).
     """
@@ -45,11 +55,18 @@ class ScribeSTT:
         await self._connect()
 
     async def _connect(self) -> None:
-        params = f"?model_id={settings.elevenlabs_stt_model}&language_code=en"
+        params = [
+            f"model_id={settings.elevenlabs_stt_model}",
+            "audio_format=pcm_16000",
+            "commit_strategy=vad",
+            "language_code=en",
+        ]
         if self._speaker_diarization:
-            params += "&diarize=true"
-        url = settings.elevenlabs_stt_endpoint + SCRIBE_WS_PATH + params
+            params.append("diarize=true")
+        url = settings.elevenlabs_stt_endpoint + SCRIBE_WS_PATH + "?" + "&".join(params)
         headers = {"xi-api-key": settings.elevenlabs_api_key}
+
+        logger.info("Connecting to Scribe STT: %s", url.split("?")[0])
 
         try:
             # Cancel old tasks before creating new ones (prevents zombie tasks on reconnect)
@@ -63,16 +80,8 @@ class ScribeSTT:
             self._receiver_task = None
             self._sender_task = None
 
-            self._ws = await websockets.connect(url, additional_headers=headers)
-            # Send session init with audio format
-            await self._ws.send(json.dumps({
-                "type": "session.start",
-                "audio_format": {
-                    "encoding": "pcm_s16le",
-                    "sample_rate": 16000,
-                    "channels": 1,
-                },
-            }))
+            # All config goes in URL params — no init message needed for the realtime API
+            self._ws = await ws_connect(url, additional_headers=headers)
             self._receiver_task = asyncio.create_task(self._receive_loop())
             self._sender_task = asyncio.create_task(self._send_loop())
             self._reconnect_attempts = 0
@@ -88,8 +97,16 @@ class ScribeSTT:
                 chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=5.0)
                 if chunk is None:
                     break
-                if self._ws and not self._ws.closed:
-                    await self._ws.send(chunk)
+                if self._ws and self._ws.state is State.OPEN:
+                    # Scribe Realtime expects base64-encoded audio in a JSON message
+                    audio_b64 = base64.b64encode(chunk).decode()
+                    msg = json.dumps({
+                        "message_type": "input_audio_chunk",
+                        "audio_base_64": audio_b64,
+                        "commit": False,
+                        "sample_rate": 16000,
+                    })
+                    await self._ws.send(msg)
             except asyncio.TimeoutError:
                 continue
             except Exception as exc:
@@ -118,19 +135,38 @@ class ScribeSTT:
                 asyncio.create_task(self._reconnect())
 
     async def _handle_message(self, msg: dict) -> None:
-        msg_type = msg.get("type", "")
-        # Handle various transcript message formats ElevenLabs may send
-        if msg_type in ("transcript.word", "transcript.text", "speech.final",
-                        "transcript", "transcription"):
-            text = (msg.get("text") or msg.get("transcript") or "").strip()
+        # Scribe Realtime uses "message_type" (not "type")
+        msg_type = msg.get("message_type", "")
+
+        if msg_type == "session_started":
+            logger.info("Scribe session started: %s", msg)
+
+        elif msg_type == "partial_transcript":
+            # Intermediate result — log for debugging only
+            text = (msg.get("transcript") or "").strip()
+            if text:
+                logger.debug("Partial transcript: %s", text[:60])
+
+        elif msg_type == "committed_transcript":
+            # Final committed transcript — pass to agent and frontend
+            text = (msg.get("transcript") or "").strip()
             speaker = "A"
             if self._speaker_diarization:
                 speaker = str(msg.get("speaker_id") or msg.get("speaker") or "A")
             if text:
-                logger.info("Transcript: %s", text[:50])
+                logger.info("Committed transcript: %s", text[:80])
                 await self._on_transcript(text, speaker)
-        elif msg_type == "error":
-            logger.error("Scribe error message: %s", msg)
+
+        elif msg_type in (
+            "auth_error", "quota_exceeded", "transcriber_error",
+            "unaccepted_terms_error", "rate_limited", "input_error",
+            "queue_overflow", "resource_exhausted", "session_time_limit_exceeded",
+            "chunk_size_exceeded", "insufficient_audio_activity",
+        ):
+            logger.error("Scribe error [%s]: %s", msg_type, msg)
+
+        else:
+            logger.debug("Scribe unknown message_type=%r: %s", msg_type, msg)
 
     async def send_audio(self, chunk: bytes) -> None:
         """Queue a raw PCM audio chunk to be forwarded to Scribe."""
@@ -161,7 +197,11 @@ class ScribeSTT:
         if self._reconnect_attempts > 10:
             logger.error("Scribe STT: max reconnect attempts reached, giving up")
             return
-        await asyncio.sleep(min(2 ** self._reconnect_attempts, 30))
+        delay = min(2 ** self._reconnect_attempts, 30)
+        logger.info(
+            "Reconnecting to Scribe STT in %ds (attempt %d)...",
+            delay, self._reconnect_attempts,
+        )
+        await asyncio.sleep(delay)
         if self._running:
-            logger.info("Reconnecting to Scribe STT (attempt %d)...", self._reconnect_attempts)
             await self._connect()
