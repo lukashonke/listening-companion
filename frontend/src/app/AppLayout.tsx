@@ -24,7 +24,7 @@ export function AppLayout() {
     (event: WSEvent) => {
       if (event.type === 'tts_chunk') {
         enqueueTTS(event.audio_b64)
-        return
+        // Don't return — let it fall through to dispatchWS to store speech text
       }
       if (event.type === 'error' && !event.fatal) {
         toast.error(event.code, { description: event.message })

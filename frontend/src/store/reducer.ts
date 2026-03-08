@@ -32,6 +32,7 @@ export const initialState: AppState = {
   sessionName: 'New Session',
   config: DEFAULT_CONFIG,
   resumeSessionId: null,
+  currentSpeech: null,
 }
 
 export { DEFAULT_CONFIG }
@@ -56,7 +57,7 @@ const handlers: Partial<Record<WSEvent['type'], Handler>> = {
     return { ...s, images: [...s.images, ev] }
   },
   agent_start: (s) => ({ ...s, isAgentThinking: true }),
-  agent_done: (s) => ({ ...s, isAgentThinking: false }),
+  agent_done: (s) => ({ ...s, isAgentThinking: false, currentSpeech: null }),
   session_status: (s, e) => {
     const ev = e as Extract<WSEvent, { type: 'session_status' }>
     return { ...s, sessionStatus: ev.state }
@@ -65,7 +66,11 @@ const handlers: Partial<Record<WSEvent['type'], Handler>> = {
     const ev = e as Extract<WSEvent, { type: 'error' }>
     return { ...s, error: { code: ev.code, message: ev.message, fatal: ev.fatal } }
   },
-  tts_chunk: (s) => s, // handled by useTTSPlayer hook directly
+  tts_chunk: (s, e) => {
+    const ev = e as Extract<WSEvent, { type: 'tts_chunk' }>
+    // Store spoken text for live stage display; audio handled by useTTSPlayer
+    return { ...s, currentSpeech: { text: ev.text, ts: Date.now() } }
+  },
   log: (s, e) => {
     const ev = e as Extract<WSEvent, { type: 'log' }>
     return { ...s, logs: [...s.logs.slice(-999), { level: ev.level, message: ev.message, ts: ev.ts }] }

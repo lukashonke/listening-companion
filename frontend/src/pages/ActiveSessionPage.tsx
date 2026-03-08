@@ -5,10 +5,11 @@ import { AgentLogTab } from '@/tabs/AgentLogTab'
 import { MemoryTab } from '@/tabs/MemoryTab'
 import { LogsTab } from '@/tabs/LogsTab'
 import { useAppContext } from '@/context/AppContext'
-import { FileText, Wrench, Brain, ImageIcon, ArrowLeft, Terminal, ChevronDown, ChevronRight } from 'lucide-react'
+import { FileText, Wrench, Brain, ImageIcon, ArrowLeft, Terminal, ChevronDown, ChevronRight, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { SessionImagesTab } from '@/tabs/SessionImagesTab'
+import { MainTab } from '@/tabs/MainTab'
 
 export function ActiveSessionPage() {
   const { state, dispatchUI } = useAppContext()
@@ -16,7 +17,7 @@ export function ActiveSessionPage() {
   const [showSessionSettings, setShowSessionSettings] = useState(false)
 
   return (
-    <Tabs defaultValue="transcript" className="flex flex-col h-full">
+    <Tabs defaultValue="main" className="flex flex-col h-full">
       {/* Session settings (collapsible) */}
       <div className="border-b border-border px-4 py-2 shrink-0">
         <button
@@ -65,6 +66,13 @@ export function ActiveSessionPage() {
         </Button>
         <div className="flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsList className="bg-transparent h-10 p-0 gap-1 rounded-none min-w-max">
+            <TabsTrigger
+              value="main"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-10 shrink-0"
+            >
+              <Monitor className="h-3.5 w-3.5" />
+              Main
+            </TabsTrigger>
             <TabsTrigger
               value="transcript"
               className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-10 shrink-0"
@@ -118,6 +126,9 @@ export function ActiveSessionPage() {
           </TabsList>
         </div>
       </div>
+      <TabsContent value="main" className="flex-1 mt-0 overflow-hidden data-[state=inactive]:hidden">
+        <MainTab />
+      </TabsContent>
       <TabsContent value="transcript" className="flex-1 mt-0 overflow-hidden data-[state=inactive]:hidden">
         <TranscriptTab />
       </TabsContent>

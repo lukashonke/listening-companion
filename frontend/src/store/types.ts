@@ -66,6 +66,11 @@ export interface LogEntry {
   ts: number
 }
 
+export interface TTSSpeech {
+  text: string
+  ts: number
+}
+
 export interface AppState {
   sessionStatus: SessionStatus
   transcript: TranscriptChunk[]
@@ -79,6 +84,8 @@ export interface AppState {
   sessionName: string
   config: SessionConfig
   resumeSessionId: string | null
+  /** Currently spoken TTS text (for live stage display) */
+  currentSpeech: TTSSpeech | null
 }
 
 // All WebSocket event types (server → client)
