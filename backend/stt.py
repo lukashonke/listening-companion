@@ -55,18 +55,26 @@ class ScribeSTT:
         await self._connect()
 
     async def _connect(self) -> None:
+        api_key = settings.elevenlabs_api_key
         params = [
             f"model_id={settings.elevenlabs_stt_model}",
             "audio_format=pcm_16000",
             "commit_strategy=vad",
             "language_code=en",
+            # Pass API key in URL so it survives proxy/load-balancer header stripping
+            f"xi_api_key={api_key}",
         ]
         if self._speaker_diarization:
             params.append("diarize=true")
         url = settings.elevenlabs_stt_endpoint + SCRIBE_WS_PATH + "?" + "&".join(params)
-        headers = {"xi-api-key": settings.elevenlabs_api_key}
+        # Also send as header (redundant but harmless; some infra passes headers through)
+        headers = {"xi-api-key": api_key}
 
-        logger.info("Connecting to Scribe STT: %s", url.split("?")[0])
+        logger.info(
+            "Connecting to Scribe STT: %s (api_key present: %s)",
+            url.split("?")[0],
+            bool(api_key),
+        )
 
         try:
             # Cancel old tasks before creating new ones (prevents zombie tasks on reconnect)
@@ -87,7 +95,12 @@ class ScribeSTT:
             self._reconnect_attempts = 0
             logger.info("Scribe STT connected")
         except Exception as exc:
-            logger.error("Scribe STT connection failed: %s", exc)
+            logger.error(
+                "Scribe STT connection failed: %s | endpoint: %s | api_key present: %s",
+                exc,
+                url.split("?")[0],
+                bool(api_key),
+            )
             if self._running:
                 asyncio.create_task(self._reconnect())
 
