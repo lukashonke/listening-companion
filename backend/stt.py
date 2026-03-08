@@ -105,6 +105,8 @@ class ScribeSTT:
                 asyncio.create_task(self._reconnect())
 
     async def _send_loop(self) -> None:
+        chunks_sent = 0
+        bytes_sent = 0
         while self._running:
             try:
                 chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=5.0)
@@ -120,7 +122,25 @@ class ScribeSTT:
                         "sample_rate": 16000,
                     })
                     await self._ws.send(msg)
+                    chunks_sent += 1
+                    bytes_sent += len(chunk)
+                    if chunks_sent % 20 == 0:
+                        logger.info(
+                            "Scribe STT: forwarded %d audio chunks to Scribe (%d bytes total, ~%.1fs of audio)",
+                            chunks_sent, bytes_sent, chunks_sent * 0.2,
+                        )
             except asyncio.TimeoutError:
+                # Queue was empty for 5s — send an explicit commit to flush VAD
+                if self._ws and self._ws.state is State.OPEN and chunks_sent > 0:
+                    try:
+                        commit_msg = json.dumps({"message_type": "commit"})
+                        await self._ws.send(commit_msg)
+                        logger.info(
+                            "Scribe STT: sent explicit commit after 5s silence (chunks_sent=%d)",
+                            chunks_sent,
+                        )
+                    except Exception as exc:
+                        logger.debug("STT commit send error: %s", exc)
                 continue
             except Exception as exc:
                 logger.debug("STT send error: %s", exc)
@@ -132,10 +152,13 @@ class ScribeSTT:
         try:
             async for raw in self._ws:
                 if isinstance(raw, bytes):
+                    logger.info("Scribe raw binary frame received (%d bytes)", len(raw))
                     continue
+                logger.info("Scribe raw message: %s", raw[:300])
                 try:
                     msg = json.loads(raw)
                 except json.JSONDecodeError:
+                    logger.warning("Scribe non-JSON message: %r", raw[:200])
                     continue
                 await self._handle_message(msg)
         except ConnectionClosed:
@@ -155,10 +178,8 @@ class ScribeSTT:
             logger.info("Scribe session started: %s", msg)
 
         elif msg_type == "partial_transcript":
-            # Intermediate result — log for debugging only
             text = (msg.get("transcript") or "").strip()
-            if text:
-                logger.debug("Partial transcript: %s", text[:60])
+            logger.info("Scribe partial transcript: %r", text[:80])
 
         elif msg_type == "committed_transcript":
             # Final committed transcript — pass to agent and frontend
@@ -179,7 +200,7 @@ class ScribeSTT:
             logger.error("Scribe error [%s]: %s", msg_type, msg)
 
         else:
-            logger.debug("Scribe unknown message_type=%r: %s", msg_type, msg)
+            logger.info("Scribe unknown message_type=%r: %s", msg_type, msg)
 
     async def send_audio(self, chunk: bytes) -> None:
         """Queue a raw PCM audio chunk to be forwarded to Scribe."""
