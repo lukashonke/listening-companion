@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Mic, Trash2, RotateCcw } from 'lucide-react'
+import { Plus, Mic, Trash2, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAppContext } from '@/context/AppContext'
 import { apiFetch } from '@/lib/auth'
 
@@ -13,6 +13,8 @@ interface ApiSession {
   ended_at: number | null;
   config?: string;
 }
+
+const PAGE_SIZE = 20
 
 function getThemeFromConfig(config?: string): string {
   if (!config) return ''
@@ -28,14 +30,28 @@ export function SessionsPage() {
   const { state, dispatchUI } = useAppContext()
   const [historySessions, setHistorySessions] = useState<ApiSession[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalSessions, setTotalSessions] = useState(0)
 
-  useEffect(() => {
-    apiFetch('/api/sessions')
+  const fetchPage = useCallback((page: number) => {
+    setHistoryLoading(true)
+    const offset = page * PAGE_SIZE
+    apiFetch(`/api/sessions?offset=${offset}&limit=${PAGE_SIZE}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then((data: ApiSession[]) => setHistorySessions(data))
+      .then((data: { sessions: ApiSession[]; total: number }) => {
+        setHistorySessions(data.sessions)
+        setTotalSessions(data.total)
+        setCurrentPage(page)
+      })
       .catch(err => console.warn('Failed to load session history:', err))
       .finally(() => setHistoryLoading(false))
   }, [])
+
+  useEffect(() => {
+    fetchPage(0)
+  }, [fetchPage])
+
+  const totalPages = Math.max(1, Math.ceil(totalSessions / PAGE_SIZE))
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -50,6 +66,7 @@ export function SessionsPage() {
     try {
       await apiFetch(`/api/sessions/${sessionId}`, { method: 'DELETE' })
       setHistorySessions(prev => prev.filter(s => s.id !== sessionId))
+      setTotalSessions(prev => Math.max(0, prev - 1))
     } catch {
       // delete failed silently
     } finally {
@@ -123,79 +140,108 @@ export function SessionsPage() {
           ) : historySessions.length === 0 ? (
             <p className="text-sm text-muted-foreground/70">No past sessions yet.</p>
           ) : (
-            historySessions.map(session => {
-              const duration = session.ended_at != null
-                ? Math.round((session.ended_at - session.created_at) / 60)
-                : null
-              const isPendingDelete = confirmDeleteId === session.id
-              const isCurrentlyDeleting = deletingId === session.id
-              const theme = getThemeFromConfig(session.config)
-              return (
-                <Card
-                  key={session.id}
-                  className="border-border/70 cursor-pointer hover:bg-accent/50 transition-colors group"
-                  onClick={() => !isPendingDelete && navigate(`/sessions/${session.id}`)}
+            <>
+              {historySessions.map(session => {
+                const duration = session.ended_at != null
+                  ? Math.round((session.ended_at - session.created_at) / 60)
+                  : null
+                const isPendingDelete = confirmDeleteId === session.id
+                const isCurrentlyDeleting = deletingId === session.id
+                const theme = getThemeFromConfig(session.config)
+                return (
+                  <Card
+                    key={session.id}
+                    className="border-border/70 cursor-pointer hover:bg-accent/50 transition-colors group"
+                    onClick={() => !isPendingDelete && navigate(`/sessions/${session.id}`)}
+                  >
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <Mic className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{session.name || session.id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(session.created_at * 1000).toLocaleString()}
+                          {duration != null && <span> &middot; {duration} min</span>}
+                          {theme && <span> &middot; {theme}</span>}
+                        </p>
+                      </div>
+                      {isPendingDelete ? (
+                        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                          <span className="text-xs text-muted-foreground mr-1">Delete?</span>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-7 text-xs px-2"
+                            onClick={(e) => handleDelete(e, session.id)}
+                            disabled={isCurrentlyDeleting}
+                          >
+                            {isCurrentlyDeleting ? '…' : 'Yes'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs px-2"
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
+                          >
+                            No
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
+                            onClick={(e) => handleResume(e, session)}
+                            aria-label="Resume session"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                            Resume
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => handleDelete(e, session.id)}
+                            aria-label="Delete session"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchPage(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  aria-label="Previous page"
+                  className="gap-1"
                 >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                      <Mic className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{session.name || session.id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(session.created_at * 1000).toLocaleString()}
-                        {duration != null && <span> &middot; {duration} min</span>}
-                        {theme && <span> &middot; {theme}</span>}
-                      </p>
-                    </div>
-                    {isPendingDelete ? (
-                      <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                        <span className="text-xs text-muted-foreground mr-1">Delete?</span>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="h-7 text-xs px-2"
-                          onClick={(e) => handleDelete(e, session.id)}
-                          disabled={isCurrentlyDeleting}
-                        >
-                          {isCurrentlyDeleting ? '…' : 'Yes'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs px-2"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
-                        >
-                          No
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => handleResume(e, session)}
-                          aria-label="Resume session"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                          Resume
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => handleDelete(e, session.id)}
-                          aria-label="Delete session"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  aria-label="Next page"
+                  className="gap-1"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </div>

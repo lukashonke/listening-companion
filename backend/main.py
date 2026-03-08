@@ -247,13 +247,17 @@ async def list_elevenlabs_voices():
 
 
 @app.get("/api/sessions")
-async def list_sessions():
+async def list_sessions(offset: int = 0, limit: int = 20):
     db = await get_db()
+    async with db.execute("SELECT COUNT(*) FROM sessions") as cursor:
+        row = await cursor.fetchone()
+        total = row[0]
     async with db.execute(
-        "SELECT id, name, created_at, ended_at, config FROM sessions ORDER BY created_at DESC LIMIT 50"
+        "SELECT id, name, created_at, ended_at, config FROM sessions ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        (limit, offset),
     ) as cursor:
         rows = await cursor.fetchall()
-    return [dict(r) for r in rows]
+    return {"sessions": [dict(r) for r in rows], "total": total}
 
 
 @app.get("/api/sessions/{session_id}")
