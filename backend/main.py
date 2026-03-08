@@ -50,7 +50,7 @@ async def auth_middleware(request: Request, call_next):
     """Password-gate /api/* and /ws routes when APP_PASSWORD is set."""
     if settings.app_password:
         path = request.url.path
-        if path.startswith("/api/") or path == "/ws":
+        if (path.startswith("/api/") and not path.startswith("/api/images/")) or path == "/ws":
             auth_header = request.headers.get("Authorization", "")
             token_param = request.query_params.get("token", "")
             authorized = (
