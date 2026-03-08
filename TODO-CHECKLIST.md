@@ -218,7 +218,7 @@
 
 ## Round 7 — Agent Context & Invocation
 
-- [ ] **R18: Improve agent context window**
+- [x] **R18: Improve agent context window**
   The agent currently only sees new transcripts since the last agent run. This is too limited — it has no conversation history and loses context.
   
   **Change to provide the agent with:**
@@ -229,7 +229,7 @@
      - **TTS (speak) tools:** include the full text that was spoken, so the agent knows what it already said and doesn't repeat itself.
   3. Structure this as a conversation-style context the agent can reason over, not just a raw dump.
 
-- [ ] **R19: Trigger agent on every committed transcript**
+- [x] **R19: Trigger agent on every committed transcript**
   Currently the agent runs on a timer interval (`agent_interval_s`). Change it so the agent is invoked **after every committed transcript chunk** — but only if it's not already running.
   
   - When a `committed_transcript` arrives from STT, check if the agent is currently processing. If not, trigger an agent run.
@@ -237,7 +237,7 @@
   - Keep the interval-based trigger as a fallback (or remove it if the transcript-based trigger is sufficient — TBD).
   - This makes the agent more responsive to the conversation flow rather than waiting for a fixed timer.
 
-- [ ] **R20: Expose full agent system prompt in settings**
+- [x] **R20: Expose full agent system prompt in settings**
   The current "custom system prompt" field only appends to the built-in prompt. Instead, expose the **full agent system prompt** in the settings so it can be fully customized.
   
   - Add a new settings field (textarea) showing the complete system prompt template (including the built-in parts).
@@ -248,7 +248,7 @@
 
 ## Bug Fixes (Round 3)
 
-- [ ] **B6: Agent generates image but doesn't speak (TTS not triggered)**
+- [x] **B6: Agent generates image but doesn't speak (TTS not triggered)**
   When asked "Can you hear me? Can you tell me something nice to generate an image?", the agent only generated an image but did NOT use TTS to speak back.
   
   **Expected behavior:** The agent should BOTH speak (TTS) AND generate an image when the user asks for both — or at minimum, always speak a response to a direct question. Image generation should not suppress or replace TTS output.
