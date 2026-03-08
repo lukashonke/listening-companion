@@ -137,6 +137,57 @@
   - Cache the model list for a reasonable time (e.g., 1 hour) to avoid hitting the API on every page load
   - Sort models by name for easy browsing
 
+## Round 5 Fixes
+
+- [ ] **R12: Add TTS language selector (default Czech)**
+  - Add a language selector to the TTS section in SettingsPage
+  - The ElevenLabs TTS API accepts `language_code` in the payload — add it to the TTS request in `backend/tts.py`
+  - Add `tts_language` to SessionConfig in `backend/models.py` with default `"cs"` (Czech)
+  - Add `tts_language` to the frontend SessionConfig type and DEFAULT_CONFIG with default `"cs"`
+  - Pass `tts_language` through from config to the TTS tool
+  - Language options: cs (Czech, default), en (English), de (German), fr (French), es (Spanish), it (Italian), pt (Portuguese), ja (Japanese), zh (Chinese), pl (Polish), sk (Slovak)
+
+- [ ] **R13: Fetch ALL model lists dynamically from APIs**
+  The current hardcoded model lists are severely outdated. Fix ALL of them:
+
+  **OpenAI models** — already has `/api/models/openai` endpoint (R11), but verify it works and the filter is good. These models MUST be available:
+  - gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano
+  - o1, o1-pro, o3, o3-mini, o3-pro, o4-mini
+  
+  **Gemini models** — add a NEW backend endpoint `GET /api/models/gemini` that calls `GET https://generativelanguage.googleapis.com/v1beta/models?key=<GOOGLE_API_KEY>` and returns chat-capable Gemini models (filter out embedding, imagen, veo, gemma, aqa, robotics, tts, audio models). Must include:
+  - gemini-2.0-flash, gemini-2.0-flash-lite
+  - gemini-2.5-flash, gemini-2.5-flash-lite, gemini-2.5-pro
+  - gemini-3-flash-preview, gemini-3-pro-preview
+  - gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview
+  Cache for 1 hour like OpenAI endpoint.
+  Frontend: when Google is selected, fetch from this endpoint.
+
+  **Anthropic models** — Anthropic doesn't have a list models API. Keep these hardcoded but UPDATE the list:
+  - claude-sonnet-4-6, claude-opus-4-6, claude-haiku-4-5-20251001
+
+  **Image generation models** — update IMAGE_PROVIDERS to include:
+  - `placeholder` — Placeholder (no API)
+  - `openai` — OpenAI (gpt-image-1) 
+  - `gemini` — Google Gemini (gemini-2.0-flash-preview-image-generation)
+  
+  Also add OpenAI image generation support in `backend/image_gen.py`:
+  - Use the OpenAI Images API (`POST https://api.openai.com/v1/images/generations`) with model `gpt-image-1`
+  - Return the image as a data URI (base64)
+  
+  Remove `fal` from IMAGE_PROVIDERS since it's not implemented.
+
+- [ ] **R14: Fix image generation tool not emitting tool_call events properly**
+  Looking at the logs, the agent calls Anthropic API twice but no tool_call event appears in the Agent Log tab. Debug the `_wrap_tool` in `agent.py` — the `generate_image` tool might not be wrapping correctly, or Pydantic AI might not be calling it. 
+  
+  Add logging inside `generate_image` in `backend/tools/image_tool.py` to confirm whether the tool is actually invoked. Also log the provider value being used — if it's "placeholder", images won't be real.
+
+- [ ] **R15: Add ElevenLabs voice picker dropdown**
+  - Add backend endpoint `GET /api/voices/elevenlabs` that calls `GET https://api.eu.residency.elevenlabs.io/v1/voices` (with the API key) and returns `[{id, name, category}]`
+  - ⚠️ Use endpoint `https://api.eu.residency.elevenlabs.io` — see CLAUDE.md for why
+  - Cache for 1 hour
+  - Frontend: replace the free-text voice_id input in SettingsPage with a dropdown that fetches from this endpoint
+  - Show voice name + category, use voice_id as value
+
 ## After All Fixes
 
 - [x] **Commit all changes** with a descriptive commit message — b598d03
