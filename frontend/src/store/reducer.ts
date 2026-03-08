@@ -9,6 +9,7 @@ const DEFAULT_CONFIG: SessionConfig = {
   audio_chunk_ms: 200,
   stt_language: 'en',
   tts_model: 'eleven_v3',
+  tts_language: 'cs',
   agent_model: 'claude-sonnet-4-6',
   custom_system_prompt: '',
   theme: '',

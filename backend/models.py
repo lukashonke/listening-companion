@@ -29,6 +29,8 @@ class SessionConfig(BaseModel):
     model_provider: str = "anthropic"  # "anthropic" or "openai"
     agent_model: str = ""  # empty = use server default
     reasoning_effort: str = "medium"  # for OpenAI o-series reasoning models
+    # R12: TTS language code (BCP-47), default Czech
+    tts_language: str = "cs"
 
 
 class Session(BaseModel):

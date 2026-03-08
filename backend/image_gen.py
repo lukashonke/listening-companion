@@ -23,6 +23,9 @@ async def generate_image(
     if provider == "gemini":
         return await _generate_gemini(prompt)
 
+    if provider == "openai":
+        return await _generate_openai(prompt)
+
     raise NotImplementedError(f"Image provider '{provider}' not implemented yet")
 
 
@@ -60,3 +63,33 @@ async def _generate_gemini(prompt: str) -> str:
                 return f"data:{mime};base64,{b64}"
 
     raise RuntimeError(f"Gemini returned no image. Response: {data}")
+
+
+async def _generate_openai(prompt: str) -> str:
+    """Generate an image using OpenAI gpt-image-1 and return as a data URI."""
+    from config import settings
+
+    api_key = settings.openai_api_key
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is not configured")
+
+    payload = {
+        "model": "gpt-image-1",
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024",
+        "response_format": "b64_json",
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            "https://api.openai.com/v1/images/generations",
+            json=payload,
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    b64 = data["data"][0]["b64_json"]
+    logger.info("OpenAI image generated for prompt: %s", prompt[:60])
+    return f"data:image/png;base64,{b64}"

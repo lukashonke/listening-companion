@@ -108,7 +108,7 @@ class ActiveSession:
             self._long_term,
             self._emit_memory_update,
         )
-        tts_tool = build_tts_tool(self.config.voice_id, self._emit_tts_chunk)
+        tts_tool = build_tts_tool(self.config.voice_id, self._emit_tts_chunk, tts_language=self.config.tts_language)
         image_tool = build_image_tool(self.config.image_provider, self._emit_image_generated)
         plugin_tools = get_plugin_tools(self.config.tools)
 

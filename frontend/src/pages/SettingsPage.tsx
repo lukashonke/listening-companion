@@ -5,8 +5,7 @@ const AGENT_INTERVALS = [10, 30, 60, 120]
 
 const IMAGE_PROVIDERS = [
   { value: 'placeholder', label: 'Placeholder (no API key)' },
-  { value: 'fal', label: 'fal.ai Flux' },
-  { value: 'openai', label: 'OpenAI gpt-image-1' },
+  { value: 'openai', label: 'OpenAI (gpt-image-1)' },
   { value: 'gemini', label: 'Google Gemini (gemini-2.0-flash-preview-image-generation)' },
 ]
 
@@ -28,6 +27,20 @@ const STT_LANGUAGES = [
   { value: 'zh', label: 'Chinese' },
 ]
 
+const TTS_LANGUAGES = [
+  { value: 'cs', label: 'Czech (default)' },
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'German' },
+  { value: 'fr', label: 'French' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'it', label: 'Italian' },
+  { value: 'pt', label: 'Portuguese' },
+  { value: 'ja', label: 'Japanese' },
+  { value: 'zh', label: 'Chinese' },
+  { value: 'pl', label: 'Polish' },
+  { value: 'sk', label: 'Slovak' },
+]
+
 const TTS_MODELS = [
   { value: 'eleven_v3', label: 'Eleven v3 (latest)' },
   { value: 'eleven_turbo_v2_5', label: 'Eleven Turbo v2.5 (fast)' },
@@ -37,22 +50,29 @@ const TTS_MODELS = [
 const ANTHROPIC_MODELS = [
   { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (default)' },
   { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast)' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
 ]
 
 // Fallback list used while loading or if the API call fails
 const OPENAI_MODELS_FALLBACK = [
   { value: 'gpt-4o', label: 'gpt-4o' },
+  { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
   { value: 'gpt-4.1', label: 'gpt-4.1' },
   { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini' },
-  { value: 'o4-mini', label: 'o4-mini' },
+  { value: 'gpt-4.1-nano', label: 'gpt-4.1-nano' },
+  { value: 'o1', label: 'o1' },
+  { value: 'o1-pro', label: 'o1-pro' },
   { value: 'o3', label: 'o3' },
+  { value: 'o3-mini', label: 'o3-mini' },
+  { value: 'o3-pro', label: 'o3-pro' },
+  { value: 'o4-mini', label: 'o4-mini' },
 ]
 
-const GEMINI_MODELS = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default)' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (fast)' },
+const GEMINI_MODELS_FALLBACK = [
+  { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
+  { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro' },
+  { value: 'gemini-2.0-flash', label: 'gemini-2.0-flash' },
+  { value: 'gemini-2.0-flash-lite', label: 'gemini-2.0-flash-lite' },
 ]
 
 const REASONING_EFFORTS = [
@@ -73,6 +93,10 @@ export function SettingsPage() {
 
   const [openaiModels, setOpenaiModels] = useState<{ value: string; label: string }[] | null>(null)
   const [loadingOpenaiModels, setLoadingOpenaiModels] = useState(false)
+  const [geminiModels, setGeminiModels] = useState<{ value: string; label: string }[] | null>(null)
+  const [loadingGeminiModels, setLoadingGeminiModels] = useState(false)
+  const [voices, setVoices] = useState<{ id: string; name: string; category: string }[]>([])
+  const [loadingVoices, setLoadingVoices] = useState(false)
 
   useEffect(() => {
     if (config.model_provider !== 'openai') return
@@ -88,6 +112,33 @@ export function SettingsPage() {
       .finally(() => setLoadingOpenaiModels(false))
   }, [config.model_provider])
 
+  useEffect(() => {
+    if (config.model_provider !== 'google') return
+    setLoadingGeminiModels(true)
+    fetch('/api/models/gemini')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.models) && data.models.length > 0) {
+          setGeminiModels(data.models.map((id: string) => ({ value: id, label: id })))
+        }
+      })
+      .catch(() => { /* fall back to hardcoded list */ })
+      .finally(() => setLoadingGeminiModels(false))
+  }, [config.model_provider])
+
+  useEffect(() => {
+    setLoadingVoices(true)
+    fetch('/api/voices/elevenlabs')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.voices) && data.voices.length > 0) {
+          setVoices(data.voices)
+        }
+      })
+      .catch(() => { /* keep empty — user can still type voice_id */ })
+      .finally(() => setLoadingVoices(false))
+  }, [])
+
   const updateConfig = (patch: Partial<typeof config>) => {
     dispatchUI({ type: 'SET_CONFIG', payload: patch })
     if (isRecording) {
@@ -97,8 +148,9 @@ export function SettingsPage() {
 
   const agentModels =
     config.model_provider === 'openai' ? (openaiModels ?? OPENAI_MODELS_FALLBACK) :
-    config.model_provider === 'google' ? GEMINI_MODELS :
+    config.model_provider === 'google' ? (geminiModels ?? GEMINI_MODELS_FALLBACK) :
     ANTHROPIC_MODELS
+  const loadingAgentModels = loadingOpenaiModels || loadingGeminiModels
   const defaultAgentModel =
     config.model_provider === 'openai' ? 'gpt-4o' :
     config.model_provider === 'google' ? 'gemini-2.5-flash' :
@@ -172,14 +224,41 @@ export function SettingsPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Text-to-Speech</h2>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Voice ID (ElevenLabs)</label>
-          <input
+          <label className="text-sm font-medium">Voice (ElevenLabs)</label>
+          {voices.length > 0 ? (
+            <select
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              value={config.voice_id}
+              onChange={e => updateConfig({ voice_id: e.target.value })}
+            >
+              {voices.map(v => (
+                <option key={v.id} value={v.id}>{v.name}{v.category ? ` (${v.category})` : ''}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              value={config.voice_id}
+              onChange={e => updateConfig({ voice_id: e.target.value })}
+              placeholder={loadingVoices ? 'Loading voices…' : 'JBFqnCBsd6RMkjVDRZzb'}
+              disabled={loadingVoices}
+            />
+          )}
+          <p className="text-xs text-muted-foreground">ElevenLabs voice for spoken responses</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">TTS Language</label>
+          <select
             className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-            value={config.voice_id}
-            onChange={e => updateConfig({ voice_id: e.target.value })}
-            placeholder="JBFqnCBsd6RMkjVDRZzb"
-          />
-          <p className="text-xs text-muted-foreground">ElevenLabs voice ID for spoken responses</p>
+            value={config.tts_language}
+            onChange={e => updateConfig({ tts_language: e.target.value })}
+          >
+            {TTS_LANGUAGES.map(l => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">Language for spoken responses</p>
         </div>
 
         <div className="space-y-1.5">
@@ -223,9 +302,9 @@ export function SettingsPage() {
             className="w-full px-3 py-2 rounded-md border bg-background text-sm"
             value={config.agent_model || defaultAgentModel}
             onChange={e => updateConfig({ agent_model: e.target.value })}
-            disabled={loadingOpenaiModels}
+            disabled={loadingAgentModels}
           >
-            {loadingOpenaiModels
+            {loadingAgentModels
               ? <option>Loading models…</option>
               : agentModels.map(m => (
                   <option key={m.value} value={m.value}>{m.label}</option>
@@ -234,6 +313,9 @@ export function SettingsPage() {
           </select>
           {config.model_provider === 'openai' && openaiModels && (
             <p className="text-xs text-muted-foreground">{openaiModels.length} models fetched from OpenAI API</p>
+          )}
+          {config.model_provider === 'google' && geminiModels && (
+            <p className="text-xs text-muted-foreground">{geminiModels.length} models fetched from Google API</p>
           )}
         </div>
 

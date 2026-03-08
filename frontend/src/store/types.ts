@@ -9,6 +9,7 @@ export interface SessionConfig {
   audio_chunk_ms: number;
   stt_language: string;
   tts_model: string;
+  tts_language: string;
   agent_model: string;
   // R5
   custom_system_prompt: string;

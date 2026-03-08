@@ -124,12 +124,15 @@ class SessionAgent:
             async def async_wrapper(*args, **kwargs):
                 tool_args = {param_names[i]: v for i, v in enumerate(args) if i < len(param_names)}
                 tool_args.update(kwargs)
+                logger.info("Tool invoked: %s args=%s", fn.__name__, list(tool_args.keys()))
                 result = error = None
                 try:
                     result = await fn(*args, **kwargs)
                 except Exception as exc:
                     error = str(exc)
                     result = f"Tool error: {exc}"
+                    logger.error("Tool %s raised: %s", fn.__name__, exc)
+                logger.info("Tool %s completed — emitting tool_call event", fn.__name__)
                 await self._emit_tool_call(fn.__name__, tool_args, result, error)
                 return result
             return async_wrapper

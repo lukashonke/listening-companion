@@ -15,6 +15,7 @@ async def synthesize_tts_chunks(
     text: str,
     voice_id: str,
     on_chunk: Callable[[str, str], Awaitable[None]],
+    language_code: str = "cs",
 ) -> None:
     """
     Fetch TTS audio from ElevenLabs EU endpoint and emit a single on_chunk call
@@ -29,6 +30,7 @@ async def synthesize_tts_chunks(
         "text": text,
         "model_id": settings.elevenlabs_tts_model,
         "output_format": "mp3_44100_128",
+        "language_code": language_code,
     }
 
     try:

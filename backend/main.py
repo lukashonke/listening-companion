@@ -115,6 +115,98 @@ async def list_openai_models():
     return {"models": models}
 
 
+# ---------------------------------------------------------------------------
+# Gemini models cache
+# ---------------------------------------------------------------------------
+_gemini_models_cache: list[str] | None = None
+_gemini_models_cache_at: float = 0.0
+_GEMINI_MODELS_CACHE_TTL = 3600  # 1 hour
+
+_GEMINI_EXCLUDE_KEYWORDS = [
+    "embedding", "imagen", "veo", "gemma", "aqa", "robotics", "tts", "audio",
+    "text-embedding", "image-generation",
+]
+
+_GEMINI_INCLUDE_PREFIX = "gemini-"
+
+
+def _is_gemini_chat_model(model_name: str) -> bool:
+    lower = model_name.lower()
+    if not lower.startswith(_GEMINI_INCLUDE_PREFIX):
+        return False
+    # Exclude models used for image gen, embedding, tts, etc.
+    if any(kw in lower for kw in _GEMINI_EXCLUDE_KEYWORDS):
+        return False
+    return True
+
+
+@app.get("/api/models/gemini")
+async def list_gemini_models():
+    global _gemini_models_cache, _gemini_models_cache_at
+    now = time.time()
+    if _gemini_models_cache is not None and now - _gemini_models_cache_at < _GEMINI_MODELS_CACHE_TTL:
+        return {"models": _gemini_models_cache}
+    if not settings.google_api_key:
+        return {"models": []}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://generativelanguage.googleapis.com/v1beta/models",
+                params={"key": settings.google_api_key},
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.error("Failed to fetch Gemini models: %s", exc)
+        return JSONResponse({"error": "Failed to fetch models from Google"}, status_code=502)
+    models = sorted(
+        m["name"].replace("models/", "")
+        for m in data.get("models", [])
+        if _is_gemini_chat_model(m.get("name", "").replace("models/", ""))
+    )
+    _gemini_models_cache = models
+    _gemini_models_cache_at = now
+    return {"models": models}
+
+
+# ---------------------------------------------------------------------------
+# ElevenLabs voices cache
+# ---------------------------------------------------------------------------
+_elevenlabs_voices_cache: list[dict] | None = None
+_elevenlabs_voices_cache_at: float = 0.0
+_ELEVENLABS_VOICES_CACHE_TTL = 3600  # 1 hour
+
+
+@app.get("/api/voices/elevenlabs")
+async def list_elevenlabs_voices():
+    global _elevenlabs_voices_cache, _elevenlabs_voices_cache_at
+    now = time.time()
+    if _elevenlabs_voices_cache is not None and now - _elevenlabs_voices_cache_at < _ELEVENLABS_VOICES_CACHE_TTL:
+        return {"voices": _elevenlabs_voices_cache}
+    if not settings.elevenlabs_api_key:
+        return {"voices": []}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{settings.elevenlabs_eu_endpoint}/v1/voices",
+                headers={"xi-api-key": settings.elevenlabs_api_key},
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.error("Failed to fetch ElevenLabs voices: %s", exc)
+        return JSONResponse({"error": "Failed to fetch voices from ElevenLabs"}, status_code=502)
+    voices = sorted(
+        {"id": v["voice_id"], "name": v["name"], "category": v.get("category", "")},
+        key=lambda v: v["name"],
+    )
+    _elevenlabs_voices_cache = voices
+    _elevenlabs_voices_cache_at = now
+    return {"voices": voices}
+
+
 @app.get("/api/sessions")
 async def list_sessions():
     db = await get_db()
