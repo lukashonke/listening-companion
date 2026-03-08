@@ -178,12 +178,14 @@ class ScribeSTT:
             logger.info("Scribe session started: %s", msg)
 
         elif msg_type == "partial_transcript":
-            text = (msg.get("transcript") or "").strip()
+            # Scribe Realtime sends "text", not "transcript"
+            text = (msg.get("text") or msg.get("transcript") or "").strip()
             logger.info("Scribe partial transcript: %r", text[:80])
 
         elif msg_type == "committed_transcript":
             # Final committed transcript — pass to agent and frontend
-            text = (msg.get("transcript") or "").strip()
+            # Scribe Realtime sends "text", not "transcript"
+            text = (msg.get("text") or msg.get("transcript") or "").strip()
             speaker = "A"
             if self._speaker_diarization:
                 speaker = str(msg.get("speaker_id") or msg.get("speaker") or "A")
