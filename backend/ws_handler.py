@@ -38,10 +38,11 @@ logger = logging.getLogger(__name__)
 class ActiveSession:
     """One active listening session, tied to a single WebSocket connection."""
 
-    def __init__(self, ws: WebSocket, config: SessionConfig):
+    def __init__(self, ws: WebSocket, config: SessionConfig, name: str = ""):
         self.id = f"sess_{uuid.uuid4().hex[:12]}"
         self.ws = ws
         self.config = config
+        self.name = name
         self.transcript: list[TranscriptChunk] = []
         self._db = None
         self._short_term: ShortTermMemory | None = None
@@ -55,8 +56,8 @@ class ActiveSession:
 
         # Persist session row
         await self._db.execute(
-            "INSERT OR IGNORE INTO sessions (id, created_at, config) VALUES (?, ?, ?)",
-            (self.id, time.time(), self.config.model_dump_json()),
+            "INSERT OR IGNORE INTO sessions (id, name, created_at, config) VALUES (?, ?, ?, ?)",
+            (self.id, self.name, time.time(), self.config.model_dump_json()),
         )
         await self._db.commit()
 
@@ -216,7 +217,8 @@ async def websocket_handler(ws: WebSocket) -> None:
                 if session:
                     await session.teardown()
                 config = SessionConfig(**data.get("config", {}))
-                session = ActiveSession(ws, config)
+                name = str(data.get("name", "")).strip()
+                session = ActiveSession(ws, config, name=name)
                 logger.info("session_start received (new session will be: %s)", session.id)
                 try:
                     await session.setup()

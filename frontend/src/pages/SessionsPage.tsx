@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Mic } from 'lucide-react'
+import { Plus, Mic, Trash2 } from 'lucide-react'
 import { useAppContext } from '@/context/AppContext'
 import { apiFetch } from '@/lib/auth'
 
@@ -26,6 +26,27 @@ export function SessionsPage() {
       .catch(err => console.warn('Failed to load session history:', err))
       .finally(() => setHistoryLoading(false))
   }, [])
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  const handleDelete = useCallback(async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation()
+    if (confirmDeleteId !== sessionId) {
+      setConfirmDeleteId(sessionId)
+      return
+    }
+    setDeletingId(sessionId)
+    try {
+      await apiFetch(`/api/sessions/${sessionId}`, { method: 'DELETE' })
+      setHistorySessions(prev => prev.filter(s => s.id !== sessionId))
+    } catch {
+      // delete failed silently
+    } finally {
+      setDeletingId(null)
+      setConfirmDeleteId(null)
+    }
+  }, [confirmDeleteId])
 
   const hasActivity = state.transcript.length > 0 || state.toolLog.length > 0
 
@@ -89,23 +110,57 @@ export function SessionsPage() {
               const duration = session.ended_at != null
                 ? Math.round((session.ended_at - session.created_at) / 60)
                 : null
+              const isPendingDelete = confirmDeleteId === session.id
+              const isCurrentlyDeleting = deletingId === session.id
               return (
                 <Card
                   key={session.id}
-                  className="border-border/70 cursor-pointer hover:bg-accent/50 transition-colors"
-                  onClick={() => navigate(`/sessions/${session.id}`)}
+                  className="border-border/70 cursor-pointer hover:bg-accent/50 transition-colors group"
+                  onClick={() => !isPendingDelete && navigate(`/sessions/${session.id}`)}
                 >
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                       <Mic className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{session.name}</p>
+                      <p className="font-medium text-sm truncate">{session.name || session.id}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(session.created_at * 1000).toLocaleString()}
                         {duration != null && <span> &middot; {duration} min</span>}
                       </p>
                     </div>
+                    {isPendingDelete ? (
+                      <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                        <span className="text-xs text-muted-foreground mr-1">Delete?</span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-7 text-xs px-2"
+                          onClick={(e) => handleDelete(e, session.id)}
+                          disabled={isCurrentlyDeleting}
+                        >
+                          {isCurrentlyDeleting ? '…' : 'Yes'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs px-2"
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
+                        >
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                        onClick={(e) => handleDelete(e, session.id)}
+                        aria-label="Delete session"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )

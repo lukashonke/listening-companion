@@ -11,8 +11,11 @@ export function ImagesPage() {
     <div className="h-full flex flex-col">
       <div className="border-b border-border px-6 py-4 flex items-center gap-2 shrink-0">
         <ImageIcon className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-lg font-semibold">Images</h1>
-        <Badge variant="secondary" className="ml-auto">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-semibold">Images</h1>
+          <p className="text-xs text-muted-foreground">From the current session</p>
+        </div>
+        <Badge variant="secondary">
           {state.images.length}
         </Badge>
       </div>

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Plus, Settings } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RecordButton } from './RecordButton'
@@ -19,6 +19,7 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
   const { state, dispatchUI } = useAppContext()
   const [isStarting, setIsStarting] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const { start: startAudio, stop: stopAudio } = useAudioCapture({
     onAudioChunk: onSendBinary,
@@ -32,8 +33,11 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
     } else {
       setIsStarting(true)
       try {
-        await startAudio()
+        if (location.pathname !== '/sessions/current') {
+          navigate('/sessions/current')
+        }
         onSessionStart()
+        await startAudio()
         dispatchUI({ type: 'SET_RECORDING', payload: true })
       } catch {
         // mic permission denied or unavailable — stay in idle state
@@ -41,7 +45,7 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
         setIsStarting(false)
       }
     }
-  }, [state.isRecording, startAudio, stopAudio, dispatchUI, onSessionEnd, onSessionStart])
+  }, [state.isRecording, startAudio, stopAudio, dispatchUI, onSessionEnd, onSessionStart, location.pathname, navigate])
 
   const handleNewSession = useCallback(() => {
     if (state.isRecording) {
@@ -70,10 +74,14 @@ export function TopBar({ onSendBinary, isConnected, onSessionEnd, onSessionStart
         <span className="hidden sm:inline">New Session</span>
       </Button>
 
-      {/* Session name — hidden on mobile */}
-      <span className="hidden md:block text-sm font-medium text-foreground truncate max-w-xs">
-        {state.sessionName}
-      </span>
+      {/* Session name — editable, hidden on mobile */}
+      <input
+        className="hidden md:block text-sm font-medium bg-transparent border-none outline-none focus:ring-1 focus:ring-border rounded px-1 truncate max-w-xs text-foreground placeholder:text-muted-foreground"
+        value={state.sessionName}
+        onChange={(e) => dispatchUI({ type: 'SET_SESSION_NAME', payload: e.target.value })}
+        placeholder="Session name"
+        aria-label="Session name"
+      />
 
       <div className="flex-1" />
 

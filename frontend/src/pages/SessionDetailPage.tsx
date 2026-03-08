@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ArrowLeft, Brain, FileText } from 'lucide-react'
+import { ArrowLeft, Brain, FileText, Pencil, Check, X, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/auth'
 
 interface MemoryEntry {
@@ -31,6 +31,11 @@ export function SessionDetailPage() {
   const [session, setSession] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -43,6 +48,46 @@ export function SessionDetailPage() {
       .catch(err => setError(String(err)))
       .finally(() => setLoading(false))
   }, [id])
+
+  const startRename = useCallback(() => {
+    if (!session) return
+    setRenameValue(session.name || '')
+    setIsRenaming(true)
+    setTimeout(() => renameInputRef.current?.select(), 0)
+  }, [session])
+
+  const commitRename = useCallback(async () => {
+    if (!id || !session) return
+    const newName = renameValue.trim()
+    setIsRenaming(false)
+    if (newName === session.name) return
+    try {
+      await apiFetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      })
+      setSession(s => s ? { ...s, name: newName } : s)
+    } catch {
+      // rename failed silently
+    }
+  }, [id, session, renameValue])
+
+  const cancelRename = useCallback(() => {
+    setIsRenaming(false)
+  }, [])
+
+  const handleDelete = useCallback(async () => {
+    if (!id) return
+    setIsDeleting(true)
+    try {
+      await apiFetch(`/api/sessions/${id}`, { method: 'DELETE' })
+      navigate('/sessions')
+    } catch {
+      setIsDeleting(false)
+      setConfirmDelete(false)
+    }
+  }, [id, navigate])
 
   if (loading) {
     return (
@@ -76,12 +121,71 @@ export function SessionDetailPage() {
           Sessions
         </Button>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{session.name || session.id}</p>
+          {isRenaming ? (
+            <div className="flex items-center gap-1">
+              <input
+                ref={renameInputRef}
+                className="text-sm font-medium bg-transparent border border-border rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary w-full max-w-xs"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitRename()
+                  if (e.key === 'Escape') cancelRename()
+                }}
+                autoFocus
+              />
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={commitRename}>
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={cancelRename}>
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 group">
+              <p className="font-medium text-sm truncate">{session.name || session.id}</p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={startRename}
+                aria-label="Rename session"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
             {new Date(session.created_at * 1000).toLocaleString()}
             {duration != null && <span> · {duration} min</span>}
           </p>
         </div>
+        {confirmDelete ? (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground">Delete session?</span>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={() => setConfirmDelete(true)}
+            aria-label="Delete session"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="memory" className="flex flex-col flex-1 min-h-0">

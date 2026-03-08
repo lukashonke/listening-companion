@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from config import settings
 from database import get_db, close_db
@@ -96,6 +97,36 @@ async def get_session(session_id: str):
         {**dict(r), "tags": _json.loads(r["tags"])} for r in mem_rows
     ]
     return session
+
+
+class RenameSessionRequest(BaseModel):
+    name: str
+
+
+@app.patch("/api/sessions/{session_id}")
+async def rename_session(session_id: str, body: RenameSessionRequest):
+    db = await get_db()
+    async with db.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)) as cursor:
+        row = await cursor.fetchone()
+    if row is None:
+        return JSONResponse({"error": "Session not found"}, status_code=404)
+    await db.execute("UPDATE sessions SET name = ? WHERE id = ?", (body.name.strip(), session_id))
+    await db.commit()
+    return {"id": session_id, "name": body.name.strip()}
+
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str):
+    db = await get_db()
+    async with db.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)) as cursor:
+        row = await cursor.fetchone()
+    if row is None:
+        return JSONResponse({"error": "Session not found"}, status_code=404)
+    await db.execute("DELETE FROM short_term_memory WHERE session_id = ?", (session_id,))
+    await db.execute("DELETE FROM long_term_memory WHERE session_id = ?", (session_id,))
+    await db.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    await db.commit()
+    return {"deleted": session_id}
 
 
 # Serve frontend static files (production mode)
